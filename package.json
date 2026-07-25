@@ -10,17 +10,18 @@
     "node": ">=20"
   },
   "scripts": {
-    "build:shared": "pnpm --filter @palserver/shared build",
-    "build:deps": "pnpm build:shared && pnpm --filter @palserver/discord-bot build",
-    "dev:agent": "pnpm build:deps && pnpm --filter @palserver/agent dev",
-    "dev:web": "pnpm build:shared && pnpm --filter @palserver/web dev",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm build:deps && pnpm -r typecheck",
-    "bundle:agent": "pnpm build:deps && pnpm --filter @palserver/agent build && node scripts/bundle-agent.mjs",
-    "release:exe": "pnpm build:shared && pnpm --filter @palserver/web build && pnpm bundle:agent && node scripts/build-sea.mjs"
+    "build:shared": "nx build @palserver/shared",
+    "build:deps": "nx build @palserver/shared && nx build @palserver/discord-bot",
+    "dev:agent": "nx dev @palserver/agent",
+    "dev:web": "nx dev @palserver/web",
+    "build": "nx run-many -t build",
+    "typecheck": "nx run-many -t typecheck",
+    "bundle:agent": "nx build @palserver/agent && node scripts/bundle-agent.mjs",
+    "release:exe": "nx run-many -t build && pnpm bundle:agent && node scripts/build-sea.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",
+    "nx": "^23.1.0",
     "postject": "1.0.0-alpha.6",
     "resedit": "^2.0.3"
   }
