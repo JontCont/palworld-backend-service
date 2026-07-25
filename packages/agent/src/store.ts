@@ -179,7 +179,7 @@ export class InstanceStore {
       Pick<
         InstanceRecord,
         // name/gamePort 由世界設定的 ServerName/PublicPort 鏡射(routes mirrorIdentityFromSettings)
-        "settings" | "serverDir" | "serverDirManaged" | "engineSettings" | "launchOptions" | "queryPort" | "name" | "gamePort" | "externalAddress" | "autoStart"
+        "backend" | "settings" | "serverDir" | "serverDirManaged" | "engineSettings" | "launchOptions" | "queryPort" | "name" | "gamePort" | "externalAddress" | "autoStart" | "dockerImage" | "runtime" | "k8sNamespace" | "k8sStatefulSet" | "k8sServiceName"
       >
     >,
   ): InstanceRecord {

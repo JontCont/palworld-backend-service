@@ -318,6 +318,20 @@ export function registerRoutes(
     };
   };
 
+  // Agent 跑在容器裡時,native backend 會以 root 啟動 PalServer 而被遊戲拒絕;
+  // 這種部署預設應走 docker backend。
+  const IS_CONTAINERIZED = fs.existsSync("/.dockerenv");
+
+  const coerceNativeToDockerInContainer = (rec: InstanceRecord): InstanceRecord => {
+    if (!IS_CONTAINERIZED || rec.backend !== "native") return rec;
+    return store.update(rec.id, {
+      backend: "docker",
+      serverDir: undefined,
+      serverDirManaged: undefined,
+      settings: WorldSettingsSchema.parse({ ...rec.settings, bIsMultiplay: true }),
+    });
+  };
+
   const getOr404 = (id: string): InstanceRecord => {
     const rec = store.get(id);
     if (!rec) {
@@ -579,6 +593,8 @@ export function registerRoutes(
 
   app.post("/api/instances", async (req, reply) => {
     const input = CreateInstanceSchema.parse(req.body);
+    const backend: InstanceRecord["backend"] =
+      IS_CONTAINERIZED && input.backend === "native" ? "docker" : input.backend;
     if (store.findByName(input.name)) {
       return reply.code(409).send({ error: `instance "${input.name}" already exists` });
     }
@@ -591,7 +607,7 @@ export function registerRoutes(
       const used = store.usedUdpPorts();
       gamePort = 8211;
       for (;;) {
-        const osFree = input.backend === "k8s" ? true : await udpPortFree(gamePort);
+        const osFree = backend === "k8s" ? true : await udpPortFree(gamePort);
         if (!used.has(gamePort) && osFree) break;
         gamePort++;
       }
@@ -611,7 +627,7 @@ export function registerRoutes(
     let serverDir: string | undefined;
     let serverDirManaged: boolean | undefined;
     if (input.serverDir?.trim()) {
-      if (input.backend !== "native") {
+      if (backend !== "native") {
         return reply.code(400).send({ error: "serverDir is only supported by the native backend" });
       }
       if (!path.isAbsolute(input.serverDir.trim())) {
@@ -634,7 +650,7 @@ export function registerRoutes(
       }
       serverDirManaged = kind === "install" ? true : undefined;
     }
-    if (input.backend === "k8s") {
+    if (backend === "k8s") {
       const dnsLabel = (value: string | undefined, label: string): string | null => {
         const trimmed = value?.trim() ?? "";
         if (!/^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/.test(trimmed) || trimmed.length > 63) {
@@ -698,11 +714,11 @@ export function registerRoutes(
     }
     const rec = store.create({
       name: input.name,
-      backend: input.backend,
+      backend,
       flavor: input.flavor,
       gamePort,
       queryPort: store.nextQueryPort([gamePort]),
-      dockerImage: input.backend === "docker" ? input.dockerImage?.trim() || undefined : undefined,
+      dockerImage: backend === "docker" ? input.dockerImage?.trim() || undefined : undefined,
       runtime: input.runtime,
       serverDir,
       serverDirManaged,
@@ -1068,9 +1084,10 @@ export function registerRoutes(
   });
 
   app.post("/api/instances/:id/start", async (req) => {
-    const result = await startWithPalDefenderDefaults(
-      await reconcileWorldIni(getOr404((req.params as { id: string }).id)),
-    );
+    const id = (req.params as { id: string }).id;
+    const reconciled = await reconcileWorldIni(getOr404(id));
+    const startRec = coerceNativeToDockerInContainer(reconciled);
+    const result = await startWithPalDefenderDefaults(startRec);
     if (result.started) {
       supervisor.noteManualState(result.rec.id, true);
       track("server_started");
