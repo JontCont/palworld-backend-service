@@ -11,8 +11,6 @@ services:
     restart: unless-stopped
     ports:
       - "8250:8250"
-      - "8211:8211/udp"
-      - "27015:27015/udp"
     environment:
       PALSERVER_DATA_DIR: /var/lib/palserver
     volumes:
