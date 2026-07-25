@@ -680,38 +680,38 @@ interface EmailStrings {
 /** 贊助碼信件的三語文案(外觀由 renderCodeEmail 統一套用 io Software 品牌樣式)。 */
 const EMAIL_I18N: Record<Lang, EmailStrings> = {
   zh: {
-    subject: "您的 palserver GUI 先行版識別碼",
-    eyebrow: "贊助者識別碼",
+    subject: "感謝您支持 palserver GUI",
+    eyebrow: "自願支持",
     title: "感謝您的支持",
     intro:
-      "以下為您的 palserver GUI 先行版識別碼。請於 GUI 的「設定 → 贊助者識別碼」中貼上,即可解鎖先行版功能。",
-    codeLabel: "您的識別碼",
+      "palserver GUI 的所有功能都免費開放,不需要識別碼。謝謝您自願支持專案的維護與後續開發。以下識別碼僅供舊版相容使用。",
+    codeLabel: "舊版相容識別碼",
     notes:
-      "每組識別碼同一時間僅能綁定一台伺服器。如需更換伺服器,請先於原伺服器移除識別碼,再於新伺服器貼上。<br>月費訂閱有效期間將持續啟用;取消訂閱後,將於當期結束時停止授權。",
+      "贊助與功能存取完全分開;取消或變更贊助不會停用任何功能。",
     footerNote: "本信件由 palserver GUI 系統自動發送。",
     footerNoReply: "請勿直接回覆本信件,此信箱不受理回覆。",
   },
   en: {
-    subject: "Your palserver GUI early-access code",
-    eyebrow: "Sponsor code",
+    subject: "Thank you for supporting palserver GUI",
+    eyebrow: "Voluntary support",
     title: "Thank you for your support",
     intro:
-      "Below is your palserver GUI early-access code. In the GUI, open Settings → Sponsor code and paste it to unlock the early-access features.",
-    codeLabel: "Your code",
+      "Every palserver GUI feature is freely available without a code. Thank you for voluntarily supporting maintenance and future development. The code below is retained only for compatibility with older versions.",
+    codeLabel: "Legacy compatibility code",
     notes:
-      "Each code can be bound to only one server at a time. To move it to another server, first remove the code on the original server, then paste it on the new one.<br>Access remains active for the duration of your subscription and ends at the close of the current billing period after cancellation.",
+      "Sponsorship is separate from feature access; changing or ending support does not disable any feature.",
     footerNote: "This message was sent automatically by palserver GUI.",
     footerNoReply: "Please do not reply to this email; this mailbox is not monitored.",
   },
   ja: {
-    subject: "palserver GUI 先行アクセスコードのご案内",
-    eyebrow: "スポンサーコード",
+    subject: "palserver GUI をご支援いただきありがとうございます",
+    eyebrow: "任意のご支援",
     title: "ご支援ありがとうございます",
     intro:
-      "palserver GUI の先行アクセスコードをお送りいたします。GUI の「設定 → スポンサーコード」に貼り付けていただくと、先行アクセス機能が有効になります。",
-    codeLabel: "お客様のコード",
+      "palserver GUI のすべての機能はコードなしで無料利用できます。保守と今後の開発への任意のご支援に感謝いたします。以下のコードは旧バージョンとの互換性のためだけに残されています。",
+    codeLabel: "旧バージョン互換コード",
     notes:
-      "1 つのコードは、同時に 1 台のサーバーにのみ紐づけできます。別のサーバーへ移行される場合は、先に元のサーバーでコードを削除してから、新しいサーバーで貼り付けてください。<br>メンバーシップが有効な期間中は機能をご利用いただけ、解約後は当期の終了をもって無効となります。",
+      "スポンサー支援と機能アクセスは完全に分離されており、支援の変更や終了によって機能が無効になることはありません。",
     footerNote: "本メールは palserver GUI より自動送信されています。",
     footerNoReply: "本メールへの返信はご遠慮ください(受信専用です)。",
   },

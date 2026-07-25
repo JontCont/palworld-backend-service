@@ -196,7 +196,7 @@ export const COMMANDS: CommandSpec[] = [
     label: "設定世界時間",
     args: [{ name: "hour", label: "時間", required: true, placeholder: "0-23 / day / night" }],
   },
-  // tp(傳送玩家)改為贊助者先行版的專屬 modal(TeleportModal + POST /teleport),
+  // tp(傳送玩家)改用專屬 modal(TeleportModal + POST /teleport),
   // 不放在一般指令清單裡。底層一樣走 PalDefender `tp <來源> <目標玩家|x y z>`。
 
   {

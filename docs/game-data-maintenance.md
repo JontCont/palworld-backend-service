@@ -221,7 +221,7 @@ node scripts/fetch-pal-stats-defaults.mjs
   取 `fixedDungeon` 裡 `type==="Alpha Pal"` 的 marker（上次 83 筆）。boss `id` = `BOSS_<palId>`,
   **去掉 `BOSS_` 前綴就對得上 `pals.json`**——名稱 zh/ja 與圖示（帕魯肖像,已在 `pals/`）都從 pals.json 取,
   少數對不上的 boss 才用 map_data 的 `item`/`fixed_icon` 兜底（缺的圖示從 cdn.paldb.cc 補下）。
-- 地標與野外頭目都是**贊助者限定**功能（與公會據點同層 gating），改資料不影響 gating。
+- 地標與野外頭目會與公會據點一起顯示在地圖圖層；改資料不影響其他執行條件。
 - **公會據點圖示**用遊戲素材 `landmark-icons/palbox.webp`（帕魯方舟 `T_icon_buildObject_PalBoxV2`），
   放在公會色外框上;boss 圖示是帕魯肖像+紅框+皇冠,與玩家頭像刻意做得不同。
 

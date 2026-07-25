@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiCheck, FiCode, FiCopy, FiExternalLink, FiMail, FiMessageCircle, FiStar, FiX } from "react-icons/fi";
-import { BOT_LANGS, hasFeature } from "@palserver/shared";
+import { BOT_LANGS } from "@palserver/shared";
 import type { BotLang, DiscordBotLogLine, DiscordBotStatus, WebhookEventType } from "@palserver/shared";
 import type { AgentClient } from "./api";
 import { CopyPath } from "./CopyPath";
@@ -9,7 +9,7 @@ import { copyText } from "./clipboard";
 import { t, useI18n } from "./i18n";
 import { usePromoConfig } from "./promoConfig";
 import { useHiddenCards } from "./tabPrefs";
-import { SponsorLockNotice, btn, btnDanger, btnGhost, card, inputCls, labelCls } from "./ui";
+import { btn, btnDanger, btnGhost, card, inputCls, labelCls } from "./ui";
 
 /**
  * 「Discord Bot」分頁。兩種部署:
@@ -122,7 +122,6 @@ function serializeRoutes(rows: { channelId: string; events: string[] }[]): strin
 
 export function DiscordBotTab({ client, instanceId }: { client: AgentClient; instanceId: string }) {
   useI18n();
-  const [entitled, setEntitled] = useState<boolean | null>(null);
   const [addresses, setAddresses] = useState<{ ip: string; vpn: string | null }[]>([]);
   const [status, setStatus] = useState<DiscordBotStatus | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -138,18 +137,10 @@ export function DiscordBotTab({ client, instanceId }: { client: AgentClient; ins
 
   useEffect(() => {
     client
-      .license()
-      .then((l) => setEntitled(hasFeature("webhooks", l)))
-      .catch(() => setEntitled(false));
-  }, [client]);
-
-  useEffect(() => {
-    if (!entitled) return;
-    client
       .agentAddresses()
       .then((r) => setAddresses(r.addresses))
       .catch(() => {});
-  }, [client, entitled]);
+  }, [client]);
 
   // 同機狀態:掛載即拉一次,之後每 5s 輪詢(只更新 status 顯示;不動使用者的 draft)。
   const refreshStatus = useCallback(() => {
@@ -160,15 +151,14 @@ export function DiscordBotTab({ client, instanceId }: { client: AgentClient; ins
   }, [client, instanceId]);
 
   useEffect(() => {
-    if (!entitled) return;
     refreshStatus();
     const timer = setInterval(refreshStatus, 5000);
     return () => clearInterval(timer);
-  }, [entitled, refreshStatus]);
+  }, [refreshStatus]);
 
   // bot 日誌:只有展開時才輪詢(3s),避免沒看時白拉。
   useEffect(() => {
-    if (!entitled || !showLogs) return;
+    if (!showLogs) return;
     const pull = () =>
       client
         .discordBotLogs(instanceId)
@@ -177,7 +167,7 @@ export function DiscordBotTab({ client, instanceId }: { client: AgentClient; ins
     pull();
     const timer = setInterval(pull, 3000);
     return () => clearInterval(timer);
-  }, [entitled, showLogs, client, instanceId]);
+  }, [showLogs, client, instanceId]);
 
   // 首次載入(或重置後)以 status 初始化草稿;之後輪詢不覆蓋草稿。
   useEffect(() => {
@@ -269,16 +259,6 @@ export function DiscordBotTab({ client, instanceId }: { client: AgentClient; ins
       ].join("\n"),
     [agentUrl, instanceId],
   );
-
-  if (entitled === false) {
-    return (
-      <div className="flex flex-col gap-4">
-        <SponsorLockNotice>
-          {t("這是贊助者先行版功能。到「設定 → 贊助者識別碼」輸入識別碼即可使用。")}
-        </SponsorLockNotice>
-      </div>
-    );
-  }
 
   if (!draft) return null;
 

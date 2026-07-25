@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiAlertTriangle, FiEdit2, FiList, FiStar, FiTrash2 } from "react-icons/fi";
 import { GiSheep } from "react-icons/gi";
 import {
-  hasFeature,
   PAL_ROW_VARIANTS,
   PAL_STAT_CATEGORY_LABELS,
   PAL_STAT_KEYS,
@@ -21,7 +20,7 @@ import { ModInstallCard } from "./ModInstallCard";
 import { useGameData, palIconUrl, displayName } from "./gameData";
 import { usePalStatsDefaults, resolveRowCase } from "./palStatsDefaults";
 import { t, useI18n } from "./i18n";
-import { SponsorLockNotice, EmptyState, btn, btnGhost, card, errorCls, inputCls, DismissibleWarning } from "./ui";
+import { EmptyState, btn, btnGhost, card, errorCls, inputCls, DismissibleWarning } from "./ui";
 
 /** 空字串 = 不覆寫(維持既有值 / 交給 PalSchema 原始預設)。 */
 function numOrUndef(v: string): number | undefined {
@@ -42,9 +41,8 @@ const emptyDraft = () =>
   Object.fromEntries(PAL_STAT_KEYS.map((k) => [k, ""])) as Record<PalStatKey, string>;
 
 /**
- * 帕魯物種數值編輯器(贊助者先行版 pal-stats):透過 PalSchema 修改
+ * 帕魯物種數值編輯器:透過 PalSchema 修改
  * DT_PalMonsterParameter 的物種基礎值(HP / 攻防 / 移速 / 捕獲率等)。
- * 未解鎖時整組表單照樣顯示,但變灰、不可操作,並提示去設定頁輸入識別碼。
  */
 export function PalStatsTab({
   client,
@@ -60,7 +58,6 @@ export function PalStatsTab({
   const gameData = useGameData();
   // 原版數值(placeholder/大小寫校正);檔案缺失時為空物件,一切照舊
   const defaults = usePalStatsDefaults();
-  const [entitled, setEntitled] = useState<boolean | null>(null);
   const [status, setStatus] = useState<PalStatsStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -81,17 +78,9 @@ export function PalStatsTab({
   }, [client, instanceId]);
 
   useEffect(() => {
-    client
-      .license()
-      .then((l) => setEntitled(hasFeature("pal-stats", l)))
-      .catch(() => setEntitled(false));
-  }, [client, instanceId]);
-
-  useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  const locked = entitled === false;
   const row = palId.trim() ? resolveRowCase(defaults, palRowName(palId.trim(), variant)) : "";
   // 該 row 的原版數值(有資料檔才有;給 placeholder 與變體存在性判斷)
   const original = row && defaults ? defaults[row] : undefined;
@@ -139,9 +128,6 @@ export function PalStatsTab({
   if (!status.schema.supported) {
     return (
       <div className="flex flex-col gap-4">
-        {entitled === false && (
-          <SponsorLockNotice>{t("這是贊助者先行版功能。到「設定 → 贊助者識別碼」輸入識別碼即可使用。")}</SponsorLockNotice>
-        )}
         <EmptyState icon={<GiSheep />}>{status.schema.reason ?? status.reason}</EmptyState>
       </div>
     );
@@ -218,18 +204,9 @@ export function PalStatsTab({
         <p className="rounded-xl bg-grass/10 px-3 py-2 text-[13px] font-bold text-grass">{notice}</p>
       )}
 
-      {locked && (
-        <SponsorLockNotice>{t("這是贊助者先行版功能。到「設定 → 贊助者識別碼」輸入識別碼即可使用。")}</SponsorLockNotice>
-      )}
-
-      <div className={locked ? "pointer-events-none opacity-55" : undefined}>
+      <div>
         <ModInstallCard
           title={t("帕魯物種數值編輯器")}
-          titleExtra={
-            <span className="inline-flex items-center gap-1 rounded-full bg-pal/10 px-2 py-0.5 text-xs font-bold text-pal">
-              <FiStar className="size-3" /> {t("贊助者")}
-            </span>
-          }
           desc={t("透過社群開發的 PalSchema mod 修改物種基礎數值(HP / 近戰攻擊 / 遠程攻擊 / 防禦 / 移速 / 捕獲率等),改動寫在 DataTable patch,不動存檔本身。")}
           installed={status.schema.installed}
           version={status.schema.version ? `PalSchema ${status.schema.version}` : null}
@@ -279,7 +256,7 @@ export function PalStatsTab({
 
       {!status.schema.installed ? null : (
         <>
-          <div className={locked ? "pointer-events-none flex flex-col gap-4 opacity-55" : "flex flex-col gap-4"}>
+          <div className="flex flex-col gap-4">
           <div className={`${card} flex flex-col gap-3`}>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="flex min-w-0 flex-col gap-1 text-xs font-bold text-ink-muted">
@@ -501,17 +478,15 @@ export function PalStatsTab({
                           );
                         })}
                       </div>
-                      {!locked && (
-                        <button
-                          className={`${btnGhost} inline-flex shrink-0 items-center gap-1 text-xs`}
-                          onClick={() => {
-                            setPalId(parsed.palId);
-                            setVariant(parsed.variant);
-                          }}
-                        >
-                          <FiEdit2 className="size-3.5" /> {t("編輯")}
-                        </button>
-                      )}
+                      <button
+                        className={`${btnGhost} inline-flex shrink-0 items-center gap-1 text-xs`}
+                        onClick={() => {
+                          setPalId(parsed.palId);
+                          setVariant(parsed.variant);
+                        }}
+                      >
+                        <FiEdit2 className="size-3.5" /> {t("編輯")}
+                      </button>
                     </div>
                   );
                 })}

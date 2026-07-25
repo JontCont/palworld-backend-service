@@ -199,7 +199,7 @@ const zh: Dictionary = {
   },
   highlights: {
     eyebrow: 'v2.0.1 全新',
-    h2: '地圖、主題、贊助功能——這次補齊的三件大事。',
+    h2: '地圖、主題、進階管理——這次補齊的三件大事。',
     items: [
       {
         tag: '世界地圖',
@@ -209,12 +209,12 @@ const zh: Dictionary = {
       {
         tag: '主題系統',
         title: '三套主題, 深淺色都照顧到',
-        body: '帕魯原色、白銀(Vercel 風)、極光翡翠, 每套都有深色 / 淺色, 搭配帶迷你即時預覽的質感切換彈窗。白銀與極光翡翠是贊助者專屬主題。',
+        body: '帕魯原色、白銀(Vercel 風)、極光翡翠, 每套都有深色 / 淺色, 搭配帶迷你即時預覽的質感切換彈窗, 全部自由選用。',
       },
       {
-        tag: '贊助者專屬',
-        title: '贊助者專屬進階功能',
-        body: '帕魯數值編輯器(修改物種 HP / 攻防 / 捕獲率, 首領版可單獨調)、傳送玩家、批量給予道具、自訂帕魯與公會據點詳情——輸入有效的贊助者識別碼即解鎖全部進階功能。',
+        tag: '進階管理',
+        title: '完整的進階管理功能',
+        body: '帕魯數值編輯器(修改物種 HP / 攻防 / 捕獲率, 首領版可單獨調)、傳送玩家、批量給予道具、自訂帕魯與公會據點詳情——所有使用者都能直接使用。',
       },
     ],
   },
@@ -438,7 +438,7 @@ const zhCN: Dictionary = {
   },
   highlights: {
     eyebrow: 'v2.0.1 全新',
-    h2: '地图、主题、赞助功能——这次补齐的三件大事。',
+    h2: '地图、主题、高级管理——这次补齐的三件大事。',
     items: [
       {
         tag: '世界地图',
@@ -448,12 +448,12 @@ const zhCN: Dictionary = {
       {
         tag: '主题系统',
         title: '三套主题,深浅色均支持',
-        body: '帕鲁原色、白银(Vercel 风)、极光翡翠,每套都有深色 / 浅色模式,并提供实时预览的主题切换窗口。白银与极光翡翠是赞助者专属主题。',
+        body: '帕鲁原色、白银(Vercel 风)、极光翡翠,每套都有深色 / 浅色模式,并提供实时预览的主题切换窗口,全部自由选择。',
       },
       {
-        tag: '赞助者专属',
-        title: '赞助者专属进阶功能',
-        body: '帕鲁数值编辑器(修改物种 HP / 攻防 / 捕获率,首领版可单独调整)、传送玩家、批量给予道具、自定义帕鲁与公会据点详情——输入有效的赞助者识别码即解锁全部进阶功能。',
+        tag: '高级管理',
+        title: '完整的高级管理功能',
+        body: '帕鲁数值编辑器(修改物种 HP / 攻防 / 捕获率,首领版可单独调整)、传送玩家、批量给予道具、自定义帕鲁与公会据点详情——所有用户都可直接使用。',
       },
     ],
   },
@@ -677,7 +677,7 @@ const en: Dictionary = {
   },
   highlights: {
     eyebrow: 'New in v2.0.1',
-    h2: 'Map, themes, sponsor perks — the three big additions this round.',
+    h2: 'Map, themes, advanced management — the three big additions this round.',
     items: [
       {
         tag: 'World map',
@@ -687,12 +687,12 @@ const en: Dictionary = {
       {
         tag: 'Theme system',
         title: 'Three themes, light and dark both covered',
-        body: 'Palworld classic, Silver (Vercel-style) and Aurora Emerald — each with a light and dark mode — switchable from a theme picker with a live mini preview. Silver and Aurora Emerald are sponsor-exclusive themes.',
+        body: 'Palworld classic, Silver (Vercel-style) and Aurora Emerald — each with a light and dark mode — switchable from a theme picker with a live mini preview, all freely selectable.',
       },
       {
-        tag: 'Sponsor exclusive',
-        title: 'Sponsor-exclusive power features',
-        body: 'A pal stat editor (HP/attack/defense/capture rate, bosses adjustable separately), teleport a player, bulk-give items, custom pals and guild-base detail views — all unlocked with an active sponsor code.',
+        tag: 'Advanced management',
+        title: 'Complete power features',
+        body: 'A pal stat editor (HP/attack/defense/capture rate, bosses adjustable separately), teleport a player, bulk-give items, custom pals and guild-base detail views — available directly to every user.',
       },
     ],
   },
@@ -926,12 +926,12 @@ const ja: Dictionary = {
       {
         tag: 'テーマシステム',
         title: '3 テーマ、ライトもダークも',
-        body: 'パルワールド標準・シルバー(Vercel 風)・オーロラエメラルドの 3 テーマ、それぞれライト / ダーク対応。ミニプレビュー付きのテーマ切り替えダイアログから選択できます。シルバーとオーロラエメラルドはスポンサー限定テーマ。',
+        body: 'パルワールド標準・シルバー(Vercel 風)・オーロラエメラルドの 3 テーマ、それぞれライト / ダーク対応。ミニプレビュー付きのテーマ切り替えダイアログからすべて自由に選択できます。',
       },
       {
-        tag: 'スポンサー限定',
-        title: 'スポンサー限定の上級機能',
-        body: 'パルのステータス編集(HP・攻撃・防御・捕獲率、ボスは個別調整可)、プレイヤーのテレポート、アイテムの一括付与、カスタムパルやギルド拠点の詳細表示——有効なスポンサーコードですべて解放されます。',
+        tag: '高度な管理',
+        title: '充実した上級機能',
+        body: 'パルのステータス編集(HP・攻撃・防御・捕獲率、ボスは個別調整可)、プレイヤーのテレポート、アイテムの一括付与、カスタムパルやギルド拠点の詳細表示——すべてのユーザーが直接利用できます。',
       },
     ],
   },

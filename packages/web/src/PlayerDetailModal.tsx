@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiX, FiBookOpen, FiCpu, FiHome, FiLock, FiMapPin, FiPackage, FiRefreshCw, FiTrendingUp, FiUser, FiZap, FiShield } from "react-icons/fi";
 import { GiShield } from "react-icons/gi";
 import {
-  hasFeature,
   savToMap,
   type PdPal,
   type PlayerDetail,
@@ -15,7 +14,7 @@ import type { AgentClient } from "./api";
 import { useGameData, displayName, findCharacter, itemIconUrl, type GameData } from "./gameData";
 import { maskSteamId } from "./SteamId";
 import { localizeBaseName, t, useI18n } from "./i18n";
-import { DetailsToggle, Overlay, SponsorHint, card, btn, btnGhost, errorCls, inputCls, useDetailsPref } from "./ui";
+import { DetailsToggle, Overlay, card, btn, btnGhost, errorCls, inputCls, useDetailsPref } from "./ui";
 
 /**
  * 玩家詳情 — 兩個資料來源「合併成同一個視圖」,不分區:
@@ -52,7 +51,6 @@ export function PlayerDetailModal({
   const [error, setError] = useState<string | null>(null);
 
   // ── 存檔快照側 ──
-  const [entitled, setEntitled] = useState<boolean | null>(null);
   const [worldGuid, setWorldGuid] = useState<string | null>(null);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [profile, setProfile] = useState<SavePlayerProfile | null>(null);
@@ -60,7 +58,7 @@ export function PlayerDetailModal({
   const [canScan, setCanScan] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
-  // 「詳細資訊」開關:個體值/詞條/離線物品/加點等贊助內容;狀態記憶在 localStorage
+  // 「詳細資訊」開關:個體值/詞條/離線物品/加點等;狀態記憶在 localStorage
   const [showDetails, toggleDetails] = useDetailsPref();
 
   useEffect(() => {
@@ -75,13 +73,6 @@ export function PlayerDetailModal({
         client.palDefenderRest(instanceId).then(setRest).catch(() => {});
       });
   }, [client, instanceId, identifier]);
-
-  useEffect(() => {
-    client
-      .license()
-      .then((l) => setEntitled(hasFeature("save-slim", l)))
-      .catch(() => setEntitled(false));
-  }, [client, instanceId]);
 
   const restUid = detail?.available ? detail.playerUid : null;
 
@@ -255,7 +246,7 @@ export function PlayerDetailModal({
             saveByInstance={saveByInstance}
             gameData={gameData}
             fallbackName={displayLabel}
-            details={{ show: showDetails, entitled }}
+            showDetails={showDetails}
             onShowOnMap={
               onShowOnMap
                 ? (x, y) => {
@@ -282,7 +273,7 @@ function MergedBody({
   saveByInstance,
   gameData,
   fallbackName,
-  details,
+  showDetails,
   onShowOnMap,
 }: {
   detail: PlayerDetail | null;
@@ -290,11 +281,11 @@ function MergedBody({
   saveByInstance: Map<string, SavePalRow>;
   gameData: GameData | null;
   fallbackName: string;
-  /** 「詳細資訊」開關(按鈕在彈窗右上角):贊助內容收在裡面 */
-  details: { show: boolean; entitled: boolean | null };
+  /** 「詳細資訊」開關(按鈕在彈窗右上角)。 */
+  showDetails: boolean;
   onShowOnMap?: (x: number, y: number) => void;
 }) {
-  const deep = details.show && details.entitled === true;
+  const deep = showDetails;
   const prog = detail?.available ? detail.progression : null;
   const restPals = detail?.available ? detail.pals : [];
 
@@ -338,7 +329,6 @@ function MergedBody({
       {/* 公會據點(座標/跳地圖)對所有人開放,與地圖據點圖層一致 */}
       {profile?.guild && <GuildPanel guild={profile.guild} onShowOnMap={onShowOnMap} />}
 
-      {details.show && details.entitled === false && <SponsorHint />}
       {deep && profile?.statusPoints && profile.statusPoints.length > 0 && (
         <StatusPointsPanel points={profile.statusPoints} unused={profile.unusedStatusPoints ?? null} />
       )}

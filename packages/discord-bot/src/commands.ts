@@ -284,7 +284,7 @@ export function buildCommands(): BotCommand[] {
         return brandEmbed({
           color: BRAND.muted,
           title: t("公開地圖"),
-          description: t("此伺服器尚未開啟公開地圖(贊助者先行版功能),請服主到 GUI 的地圖分頁開啟「公開地圖」設定。"),
+          description: t("此伺服器尚未開啟公開地圖,請服主到 GUI 的地圖分頁開啟「公開地圖」設定。"),
           instanceName: instance.name,
         });
       }

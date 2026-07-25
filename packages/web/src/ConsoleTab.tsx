@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FiTerminal, FiPlay, FiSearch, FiTrash2, FiStar, FiMapPin } from "react-icons/fi";
+import { FiTerminal, FiPlay, FiSearch, FiTrash2, FiMapPin } from "react-icons/fi";
 import { GiShield } from "react-icons/gi";
 import {
   COMMAND_CATEGORY_LABELS,
@@ -19,7 +19,6 @@ import { CustomPalModal } from "./CustomPalModal";
 import { GiveItemsModal } from "./GiveItemsModal";
 import { TeleportModal } from "./TeleportModal";
 import { MapPickModal } from "./MapPickModal";
-import { SHOW_SPONSOR_FEATURES } from "./flags";
 import { useGameData, itemIconUrl, palIconUrl, technologyIconUrl, type GameData } from "./gameData";
 import { t, useI18n } from "./i18n";
 import { btn, btnGhost, card, errorCls, inputCls, labelCls } from "./ui";
@@ -385,11 +384,9 @@ export function ConsoleTab({
             />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {/* 贊助者專屬指令:混在清單裡跟其他分類一樣捲動,星星+title 標示。
-                未公布前用 SHOW_SPONSOR_FEATURES 整組隱藏;點了跳彈窗,未解鎖時表單不可用。 */}
-            {SHOW_SPONSOR_FEATURES && catalog.paldefender && (
+            {catalog.paldefender && (
               <div>
-                <p className="mt-2 mb-1 px-1 text-xs font-extrabold text-ink-muted">{t("贊助者專屬")}</p>
+                <p className="mt-2 mb-1 px-1 text-xs font-extrabold text-ink-muted">{t("玩家操作")}</p>
                 <div className="flex flex-col">
                   {([
                     { cmd: "givepal_j", desc: "自訂帕魯(詞條 / 體質 / 星星)", onClick: () => setCustomPalMode("pal" as const) },
@@ -402,11 +399,8 @@ export function ConsoleTab({
                       type="button"
                       className="rounded-lg px-2 py-1.5 text-left text-[13px] transition hover:bg-card-soft"
                       onClick={x.onClick}
-                      title={t("贊助者專屬")}
                     >
-                      <span className="inline-flex items-center gap-1 font-mono text-pal">
-                        {x.cmd} <FiStar className="size-3" />
-                      </span>
+                      <span className="font-mono text-pal">{x.cmd}</span>
                       <span className="block text-xs text-ink-muted">{t(x.desc)}</span>
                     </button>
                   ))}

@@ -20,7 +20,6 @@ import {
 } from "@palserver/shared";
 import type { InstanceStore } from "./store.js";
 import { onAgentEvent, type AgentEvent } from "./events.js";
-import { featureEnabled } from "./license.js";
 
 /**
  * Webhook dispatcher + 每實例持久化。
@@ -30,8 +29,7 @@ import { featureEnabled } from "./license.js";
  * 設定與執行期狀態分兩檔存,寫入全部經過 per-instance promise chain 序列化,避免並行
  * read-modify-write 互相蓋掉(比照 public-map.ts 的 chains 作法)。
  *
- * 授權:整組功能贊助限定 —— featureEnabled("webhooks")。dispatcher / 佇列 / CRUD 都把關,
- * 即使有人繞過 UI 直接改 JSON,未授權也不會送出。
+ * Webhook dispatcher / 佇列 / CRUD 與重試流程。
  */
 
 const FETCH_TIMEOUT_MS = 15_000; // Discord/遠端經 Tailscale 偶有延遲,給多點餘裕(失敗仍有重試佇列)
@@ -215,8 +213,6 @@ export class WebhooksService {
   constructor(
     private store: InstanceStore,
     private agentVersion: string,
-    /** 授權判斷注入點(測試用);預設走 license 模組。 */
-    private featureEnabledFn: () => boolean = () => featureEnabled("webhooks"),
   ) {}
 
   start(): void {
@@ -246,7 +242,6 @@ export class WebhooksService {
   /** 收到一個匯流排事件:送給所有訂閱且啟用的 webhook。回傳的 promise 完成 = 這次都送完
    *  (含記錄/入佇列),測試可 await。 */
   dispatchEvent(ev: AgentEvent): Promise<void> {
-    if (!this.featureEnabledFn()) return Promise.resolve();
     const cfg = readConfig(this.store, ev.instanceId);
     const matched = cfg.webhooks.filter((w) => w.enabled && eventMatches(w.events, ev.type));
     if (!matched.length) return Promise.resolve();
@@ -283,7 +278,6 @@ export class WebhooksService {
   }
 
   private async retryTick(): Promise<void> {
-    if (!this.featureEnabledFn()) return;
     const now = Date.now();
     for (const rec of this.store.list()) {
       await this.serialize(rec.id, async () => {
@@ -435,9 +429,8 @@ export class WebhooksService {
     });
   }
 
-  /** 已授權且有啟用中的 webhook 訂閱到 `types` 任一事件 —— 背景 tracker 用它決定要不要追。 */
+  /** 有啟用中的 webhook 訂閱到 `types` 任一事件 —— 背景 tracker 用它決定要不要追。 */
   private wantsAny(id: string, types: WebhookEventType[]): boolean {
-    if (!this.featureEnabledFn()) return false;
     return readConfig(this.store, id).webhooks.some(
       (w) => w.enabled && types.some((t) => eventMatches(w.events, t)),
     );

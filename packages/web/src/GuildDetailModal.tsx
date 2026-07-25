@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { FiAlertTriangle, FiHome, FiMapPin, FiPackage, FiRefreshCw, FiTrash2, FiUsers, FiX, FiZap } from "react-icons/fi";
 import { GiBookshelf } from "react-icons/gi";
-import { hasFeature, savToMap, type SaveGuild } from "@palserver/shared";
+import { savToMap, type SaveGuild } from "@palserver/shared";
 import type { AgentClient } from "./api";
 import { useGameData, displayName, findCharacter, itemIconUrl, type GameData } from "./gameData";
 import { localizeBaseName, t, useI18n } from "./i18n";
-import { DetailsToggle, Overlay, SponsorHint, btn, btnDanger, btnGhost, card, errorCls, inputCls, useDetailsPref } from "./ui";
+import { DetailsToggle, Overlay, btn, btnDanger, btnGhost, card, errorCls, inputCls, useDetailsPref } from "./ui";
 
 /** 刪除據點的強確認彈窗:強調不可逆 + 必須輸入公會名稱才能刪(GitHub 刪 repo 那種強確認)。 */
 function DeleteBaseConfirm({
@@ -144,17 +144,9 @@ export function BaseDetailModal({
   useI18n();
   const gameData = useGameData();
   const [showDetails, toggleDetails] = useDetailsPref();
-  const [entitled, setEntitled] = useState<boolean | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  useEffect(() => {
-    client
-      .license()
-      .then((l) => setEntitled(hasFeature("delete-base", l)))
-      .catch(() => setEntitled(false));
-  }, [client, instanceId]);
 
   const doDelete = async () => {
     setDeleting(true);
@@ -169,7 +161,7 @@ export function BaseDetailModal({
     }
   };
 
-  const deep = showDetails && entitled === true;
+  const deep = showDetails;
   const m = savToMap(base.x, base.y);
   const baseName = localizeBaseName(base.name, baseIndex);
 
@@ -204,18 +196,16 @@ export function BaseDetailModal({
                 <FiMapPin className="size-3.5" /> {t("在地圖上查看")}
               </button>
             )}
-            {entitled && (
-              <button
-                className={`${btnDanger} inline-flex items-center gap-1.5`}
-                onClick={() => {
-                  setDeleteError(null);
-                  setConfirmDelete(true);
-                }}
-                title={t("刪除此據點(不可逆)")}
-              >
-                <FiTrash2 className="size-3.5" /> {t("刪除據點")}
-              </button>
-            )}
+            <button
+              className={`${btnDanger} inline-flex items-center gap-1.5`}
+              onClick={() => {
+                setDeleteError(null);
+                setConfirmDelete(true);
+              }}
+              title={t("刪除此據點(不可逆)")}
+            >
+              <FiTrash2 className="size-3.5" /> {t("刪除據點")}
+            </button>
             {onOpenGuild && (
               <button className={`${btnGhost} inline-flex items-center gap-1.5`} onClick={onOpenGuild}>
                 <FiHome className="size-3.5" /> {t("查看公會資訊")}
@@ -223,7 +213,6 @@ export function BaseDetailModal({
             )}
           </div>
 
-          {showDetails && entitled === false && <SponsorHint />}
           {deep && (
             <div>
               <h4 className="mb-2 flex items-center gap-2 text-[13px] font-extrabold text-ink-muted">
@@ -307,10 +296,9 @@ export function GuildDetailModal({
   const [canScan, setCanScan] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
-  // 「詳細資訊」開關:駐守帕魯/公會倉庫/研究(贊助內容);狀態記憶在 localStorage
+  // 「詳細資訊」開關:駐守帕魯/公會倉庫/研究;狀態記憶在 localStorage
   const [showDetails, toggleDetails] = useDetailsPref();
-  const [entitled, setEntitled] = useState<boolean | null>(null);
-  // 刪除據點(贊助者先行、不可逆):deleteTarget 有值時開強確認彈窗。
+  // 刪除據點(不可逆):deleteTarget 有值時開強確認彈窗。
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -331,13 +319,6 @@ export function GuildDetailModal({
       setDeleting(false);
     }
   };
-
-  useEffect(() => {
-    client
-      .license()
-      .then((l) => setEntitled(hasFeature("save-slim", l)))
-      .catch(() => setEntitled(false));
-  }, [client, instanceId]);
 
   useEffect(() => {
     client
@@ -386,7 +367,7 @@ export function GuildDetailModal({
 
   const adminNorm = (guild.adminUid ?? "").replace(/[^0-9a-f]/gi, "").toLowerCase();
   const admin = guild.members.find((m) => m.uid.replace(/[^0-9a-f]/gi, "").toLowerCase() === adminNorm);
-  const deep = showDetails && entitled === true;
+  const deep = showDetails;
 
   return (
     <>
@@ -467,8 +448,6 @@ export function GuildDetailModal({
           </div>
         </div>
 
-        {showDetails && entitled === false && <SponsorHint />}
-
         {/* 據點 + 駐守帕魯(據點座標是基礎資訊;駐守明細收在詳細開關) */}
         {guild.bases.length > 0 && (
           <div>
@@ -494,18 +473,16 @@ export function GuildDetailModal({
                           <FiMapPin className="size-3" /> {t("在地圖上查看")}
                         </button>
                       )}
-                      {entitled && (
-                        <button
-                          className="inline-flex items-center gap-1 rounded-full border-2 border-line px-2 py-0.5 text-xs font-bold text-ink-muted transition hover:border-berry hover:text-berry"
-                          onClick={() => {
-                            setDeleteError(null);
-                            setDeleteTarget({ id: b.id, name: localizeBaseName(b.name, i) });
-                          }}
-                          title={t("刪除此據點(不可逆)")}
-                        >
-                          <FiTrash2 className="size-3" /> {t("刪除據點")}
-                        </button>
-                      )}
+                      <button
+                        className="inline-flex items-center gap-1 rounded-full border-2 border-line px-2 py-0.5 text-xs font-bold text-ink-muted transition hover:border-berry hover:text-berry"
+                        onClick={() => {
+                          setDeleteError(null);
+                          setDeleteTarget({ id: b.id, name: localizeBaseName(b.name, i) });
+                        }}
+                        title={t("刪除此據點(不可逆)")}
+                      >
+                        <FiTrash2 className="size-3" /> {t("刪除據點")}
+                      </button>
                       <span className="ml-auto inline-flex items-center gap-1 text-xs text-ink-muted">
                         <FiZap className="size-3.5" /> {t("{n} 隻工作帕魯", { n: b.workers.length })}
                       </span>

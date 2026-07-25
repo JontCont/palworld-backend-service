@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FiAlertTriangle, FiClock, FiStar } from "react-icons/fi";
+import { FiAlertTriangle, FiClock } from "react-icons/fi";
 import { GiBossKey, GiCrossedSwords, GiDeathSkull, GiCastle } from "react-icons/gi";
 import {
-  hasFeature,
   isWorldTreeCoord,
   assignReportedBosses,
   bossRespawnInfo,
@@ -16,7 +15,7 @@ import type { AgentClient } from "./api";
 import { ModInstallCard } from "./ModInstallCard";
 import { palIconUrl } from "./gameData";
 import { getLang, t, useI18n } from "./i18n";
-import { SponsorLockNotice, EmptyState, card, DismissibleWarning, errorCls } from "./ui";
+import { EmptyState, card, DismissibleWarning, errorCls } from "./ui";
 
 /** bosses.json / worldtree-bosses.json 的一筆(地圖座標 ±1000,已轉換好)。 */
 interface Boss {
@@ -50,7 +49,7 @@ function fmtClock(epochSec: number): string {
 }
 
 /**
- * 頭目重生時間(贊助者先行版 boss-respawn):安裝純伺服器端的 PalserverBossReporter
+ * 頭目重生時間:安裝純伺服器端的 PalserverBossReporter
  * UE4SS Lua 模組後,顯示全野外頭目(bosses.json)的死活與重生倒數。模組每 15s 回報一次;
  * 沒有玩家在附近的區域不會載入,那些頭目顯示為「未知」——UI 誠實標註這個限制。
  */
@@ -65,7 +64,6 @@ export function BossRespawnTab({
 }) {
   useI18n();
   const lang = getLang();
-  const [entitled, setEntitled] = useState<boolean | null>(null);
   const [status, setStatus] = useState<BossRespawnStatus | null>(null);
   const [bosses, setBosses] = useState<FrameBoss[] | null>(null);
   // 固定地城→頭目帕魯對照(dungeon-bosses.json,地圖座標;用來把回報的地城配到頭目 icon/名稱)。
@@ -85,14 +83,6 @@ export function BossRespawnTab({
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [client, instanceId]);
-
-  // 授權
-  useEffect(() => {
-    client
-      .license()
-      .then((l) => setEntitled(hasFeature("boss-respawn", l)))
-      .catch(() => setEntitled(false));
   }, [client, instanceId]);
 
   // 全頭目清單(主世界 + 世界樹);缺檔=舊資料包,對應世界略過。
@@ -139,8 +129,6 @@ export function BossRespawnTab({
     const tick = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
     return () => clearInterval(tick);
   }, []);
-
-  const locked = entitled === false;
 
   // 依所屬世界把回報的 spawner 分兩組(避免主世界/世界樹地圖座標撞號誤配)。
   const reported = status?.state?.bosses ?? [];
@@ -230,15 +218,6 @@ export function BossRespawnTab({
   const dungeonDead = dungeonRows.filter((r) => r.info.status === "dead").length;
   const shownDungeons = dungeonOnlyDead ? dungeonRows.filter((r) => r.info.status === "dead") : dungeonRows;
 
-  // 贊助者限定:未解鎖只顯示先行版說明,下面的內容(安裝卡、頭目清單)一律不顯示、也不預覽。
-  if (locked) {
-    return (
-      <div className="flex flex-col gap-4">
-        <SponsorLockNotice>{t("這是贊助者先行版功能。到「設定 → 贊助者識別碼」輸入識別碼即可使用。")}</SponsorLockNotice>
-      </div>
-    );
-  }
-
   if (!status) return <p className="text-ink-muted">{error ?? t("載入中…")}</p>;
 
   if (!status.supported) {
@@ -274,11 +253,6 @@ export function BossRespawnTab({
       <div>
         <ModInstallCard
           title={t("頭目重生時間")}
-          titleExtra={
-            <span className="inline-flex items-center gap-1 rounded-full bg-pal/10 px-2 py-0.5 text-xs font-bold text-pal">
-              <FiStar className="size-3" /> {t("贊助者")}
-            </span>
-          }
           desc={t("安裝純伺服器端的 UE4SS Lua 模組,每 15 秒回報野外頭目與地下城頭目的死活與重生時間。模組只讀取遊戲狀態、不改遊戲內容,玩家端不需安裝任何東西。")}
           installed={status.modInstalled}
           version={status.version}

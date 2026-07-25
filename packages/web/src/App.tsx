@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GiSheep, GiEggClutch } from "react-icons/gi";
-import { FiActivity, FiAlertTriangle, FiClock, FiCpu, FiDownload, FiFolder, FiHardDrive, FiHeart, FiHelpCircle, FiPlus, FiServer, FiSettings, FiStar, FiUsers, FiZap } from "react-icons/fi";
-import { hasFeature } from "@palserver/shared";
+import { FiActivity, FiAlertTriangle, FiClock, FiCpu, FiDownload, FiFolder, FiHardDrive, FiHeart, FiHelpCircle, FiPlus, FiServer, FiSettings, FiUsers, FiZap } from "react-icons/fi";
 import type { Backend, ExternalWorldCandidate, InstanceStats, InstanceSummary, LiveStatus } from "@palserver/shared";
 import {
   DndContext,
@@ -205,20 +204,11 @@ function Dashboard({ client, onOpen }: { client: AgentClient; onOpen: (id: strin
   const [listSearch, setListSearch] = useState("");
   const [showReview, setShowReview] = useState(false); // 配置評估健檢彈窗
   const [extras, setExtras] = useState<Record<string, CardExtra>>({});
-  // 進階顯示是贊助者先行功能(dashboard-stats),與其他早鳥功能同一套判斷。
-  const [entitled, setEntitled] = useState(false);
   const toggleAdvanced = () =>
     setAdvanced((v) => {
       localStorage.setItem(ADVANCED_KEY, v ? "0" : "1");
       return !v;
     });
-
-  useEffect(() => {
-    client
-      .license()
-      .then((l) => setEntitled(hasFeature("dashboard-stats", l)))
-      .catch(() => setEntitled(false));
-  }, [client]);
 
   const ordered = instances ? sortByOrder(instances, order) : [];
   // 台數多時的名稱搜尋(6 台以上才顯示輸入框);搜尋中仍可拖曳,但只影響顯示順序
@@ -261,7 +251,7 @@ function Dashboard({ client, onOpen }: { client: AgentClient; onOpen: (id: strin
     .sort()
     .join(",");
   useEffect(() => {
-    if (!advanced || !entitled || !runningKey) {
+    if (!advanced || !runningKey) {
       setExtras({});
       return;
     }
@@ -298,25 +288,13 @@ function Dashboard({ client, onOpen }: { client: AgentClient; onOpen: (id: strin
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-[17px] font-extrabold">{t("伺服器")}</h2>
         <div className="flex items-center gap-2">
-          {entitled ? (
-            <button
-              className={`${btnGhost} inline-flex items-center gap-1.5 ${advanced ? "border-pal text-pal" : "opacity-70"}`}
-              onClick={toggleAdvanced}
-              title={t("在首頁卡片直接顯示在線玩家數與資源用量")}
-            >
-              <FiActivity className="size-4" /> {t("進階顯示")}
-              <FiStar className="size-3.5 text-pal" />
-            </button>
-          ) : (
-            <button
-              className={`${btnGhost} inline-flex items-center gap-1.5 opacity-70`}
-              title={t("此功能為贊助者專屬功能,可在設定頁輸入贊助者識別碼解鎖。")}
-              onClick={() => window.dispatchEvent(new Event(OPEN_SETTINGS_EVENT))}
-            >
-              <FiActivity className="size-4" /> {t("進階顯示")}
-              <FiStar className="size-3.5 text-pal" />
-            </button>
-          )}
+          <button
+            className={`${btnGhost} inline-flex items-center gap-1.5 ${advanced ? "border-pal text-pal" : "opacity-70"}`}
+            onClick={toggleAdvanced}
+            title={t("在首頁卡片直接顯示在線玩家數與資源用量")}
+          >
+            <FiActivity className="size-4" /> {t("進階顯示")}
+          </button>
           <button
             className={`${btn} inline-flex items-center gap-1.5`}
             onClick={() => setShowCreate(true)}
@@ -333,12 +311,12 @@ function Dashboard({ client, onOpen }: { client: AgentClient; onOpen: (id: strin
           </button>
         </div>
       </div>
-      {advanced && entitled && instances && instances.length > 0 && (
+      {advanced && instances && instances.length > 0 && (
         <DashboardOverview instances={instances} extras={extras} />
       )}
-      {/* 配置評估健檢:同屬進階顯示(贊助者)。刻意做成不醒目的一行小字入口,
+      {/* 配置評估健檢:同屬進階顯示。刻意做成不醒目的一行小字入口,
           有需要才點開彈窗跑檢測(檢測會實寫磁碟+對外連線,不適合常駐輪詢)。 */}
-      {advanced && entitled && (
+      {advanced && (
         <div className="-mt-1.5 mb-2 flex justify-end">
           <button
             className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-muted transition hover:text-ink"
@@ -378,7 +356,7 @@ function Dashboard({ client, onOpen }: { client: AgentClient; onOpen: (id: strin
                   inst={inst}
                   onOpen={onOpen}
                   // 進階顯示時每張卡都要有資訊區(未運作的當佔位符),排版才不會高低不齊。
-                  extra={advanced && entitled ? (extras[inst.id] ?? null) : undefined}
+                  extra={advanced ? (extras[inst.id] ?? null) : undefined}
                 />
               ))}
             </div>

@@ -19,7 +19,7 @@ import {
 } from "./runtime-files.js";
 
 /**
- * 頭目重生時間(贊助者先行版 boss-respawn):安裝純伺服器端的 PalserverBossReporter
+ * 頭目重生時間:安裝純伺服器端的 PalserverBossReporter
  * UE4SS Lua 模組,模組每 15s 把頭目 spawner 死活寫到 Pal/Saved/palserver-boss-state.json,
  * agent 讀檔回報給 web。模組只讀取遊戲狀態、不改任何遊戲行為,玩家端無需安裝。
  *

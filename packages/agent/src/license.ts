@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { DATA_DIR, LICENSE_URLS } from "./env.js";
-import { EARLY_ACCESS_FEATURES, featureFreeNow, hasFeature, type LicenseStatus } from "@palserver/shared";
+import { EARLY_ACCESS_FEATURES, type LicenseStatus } from "@palserver/shared";
 
 /**
  * 贊助者識別碼(先行版授權)。一碼綁一台:第一次向 worker 啟用時把這台的機器碼綁上去,
@@ -18,7 +18,7 @@ const MACHINE_FILE = path.join(DATA_DIR, "machine-id");
 const RECHECK_MS = 12 * 60 * 60 * 1000; // 每 12 小時重新驗證
 const OFFLINE_GRACE_MS = 14 * 24 * 60 * 60 * 1000; // 連不上時,快取有效沿用 14 天
 
-interface Cache {
+export interface LicenseCache {
   valid: boolean;
   tier: string | null;
   features: string[];
@@ -50,22 +50,22 @@ function readKey(): string | null {
   }
 }
 
-function readCache(): Cache | null {
+function readCache(): LicenseCache | null {
   try {
-    return JSON.parse(fs.readFileSync(CACHE_FILE, "utf8")) as Cache;
+    return JSON.parse(fs.readFileSync(CACHE_FILE, "utf8")) as LicenseCache;
   } catch {
     return null;
   }
 }
 
-function writeCache(c: Cache): void {
+function writeCache(c: LicenseCache): void {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(CACHE_FILE, JSON.stringify(c, null, 2));
 }
 
 /** 向 worker 啟用/驗證識別碼(首次會綁機器)。多端點依序嘗試(自訂網域為主、
  *  workers.dev 為備);全部連不上回 null,交給呼叫端沿用舊快取。 */
-async function activate(code: string): Promise<Cache | null> {
+async function activate(code: string): Promise<LicenseCache | null> {
   for (const base of LICENSE_URLS) {
     try {
       const res = await fetch(`${base}/api/license/activate`, {
@@ -118,7 +118,7 @@ async function deactivate(code: string): Promise<boolean> {
 }
 
 /** 目前有效的授權(套用離線寬限期)。無 key 或寬限期已過則視為無授權。 */
-function effectiveCache(): Cache | null {
+function effectiveCache(): LicenseCache | null {
   if (!readKey()) return null;
   const c = readCache();
   if (!c) return null;
@@ -168,29 +168,24 @@ export async function clearLicenseKey(): Promise<LicenseStatus> {
   return licenseStatus();
 }
 
-/** 給前端看的完整授權狀態(含免費/贊助者功能整併後的可用功能)。 */
-export function licenseStatus(): LicenseStatus {
-  const c = effectiveCache();
-  const lic = { valid: c?.valid ?? false, features: c?.features ?? [] };
-  // 對前端而言「可用的贊助者功能」= 這張碼有解鎖(目錄內功能已無免費期限)。
-  const availableEarlyAccess = EARLY_ACCESS_FEATURES.filter((f) => hasFeature(f.id, lic)).map(
-    (f) => f.id,
-  );
+/** 給舊版前端 / API client 的相容授權狀態;授權不再控制功能可用性。 */
+export function compatibilityLicenseStatus(
+  hasKey: boolean,
+  cache: LicenseCache | null,
+  id: string,
+): LicenseStatus {
   return {
-    hasKey: readKey() !== null,
-    valid: c?.valid ?? false,
-    tier: c?.tier ?? null,
-    features: availableEarlyAccess,
-    expiresAt: c?.expiresAt ?? null,
-    reason: c?.reason ?? null,
-    machineId: machineId().slice(0, 8),
-    checkedAt: c?.checkedAt ?? null,
+    hasKey,
+    valid: cache?.valid ?? false,
+    tier: cache?.tier ?? null,
+    features: EARLY_ACCESS_FEATURES.map((feature) => feature.id),
+    expiresAt: cache?.expiresAt ?? null,
+    reason: cache?.reason ?? null,
+    machineId: id.slice(0, 8),
+    checkedAt: cache?.checkedAt ?? null,
   };
 }
 
-/** 後端閘門:這個功能現在能不能用(免費 或 有效識別碼解鎖)。給路由擋用。 */
-export function featureEnabled(id: string): boolean {
-  if (featureFreeNow(id)) return true;
-  const c = effectiveCache();
-  return hasFeature(id, { valid: c?.valid ?? false, features: c?.features ?? [] });
+export function licenseStatus(): LicenseStatus {
+  return compatibilityLicenseStatus(readKey() !== null, effectiveCache(), machineId());
 }

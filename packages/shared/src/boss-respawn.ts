@@ -1,5 +1,5 @@
 /**
- * 頭目重生時間(贊助者先行版 boss-respawn):純伺服器端 UE4SS Lua 模組
+ * 頭目重生時間:純伺服器端 UE4SS Lua 模組
  * (PalserverBossReporter)每 15 秒輪詢頭目 spawner,把死活與時間戳寫到
  * Pal/Saved/palserver-boss-state.json;agent 讀檔、web 與 bosses.json 的
  * 全頭目清單做左外連接顯示。這裡放 agent ↔ web 共用型別與純函式(可單元測試)。

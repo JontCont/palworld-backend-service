@@ -113,7 +113,7 @@ export function PaletteIcon() {
   );
 }
 
-/** v2.0.1:贊助者先行版亮點用。 */
+/** v2.0.1:進階管理功能亮點用。 */
 export function SponsorIcon() {
   return (
     <svg

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FiAlertTriangle, FiAlignLeft, FiArrowLeft, FiCheck, FiFileText, FiPlay, FiPlus, FiRefreshCw, FiSave, FiSend, FiSquare, FiStar, FiTerminal, FiX } from "react-icons/fi";
+import { FiAlertTriangle, FiAlignLeft, FiArrowLeft, FiCheck, FiFileText, FiPlay, FiPlus, FiRefreshCw, FiSave, FiSend, FiSquare, FiTerminal, FiX } from "react-icons/fi";
 import type {
   InstanceDetail as Detail,
   LogSource,
@@ -25,11 +25,10 @@ import { RestartCard } from "./RestartCard";
 import { VersionCard } from "./VersionCard";
 import { ConnectionCard } from "./ConnectionCard";
 import { InstanceSettingsTab } from "./InstanceSettingsTab";
-import { SHOW_SPONSOR_FEATURES, SHOW_BOSS_RESPAWN } from "./flags";
+import { SHOW_BOSS_RESPAWN } from "./flags";
 import { PerformanceTab } from "./PerformanceTab";
 import { EngineTab } from "./EngineTab";
 import { maskSteamIdsInText } from "./SteamId";
-import { hasFeature } from "@palserver/shared";
 import { classifyLine, categoryColor, formatLine, genericLine, translateTarget, useLogPrefs } from "./logHighlight";
 import { STATUS_LABELS } from "./labels";
 import { TABS, LOCKED_TABS, defaultHiddenTabs, useHiddenTabs, useHiddenCards, useTabOrder, type Tab } from "./tabPrefs";
@@ -505,14 +504,13 @@ export function InstanceDetailPage({
       )}
 
       {(() => {
-        // 依每實例自訂順序排列,再套 gating(贊助旗標)。
+        // 依每實例自訂順序排列,再套尚未公開的功能旗標。
         // 注意:paldefender 不做「裝了才有」的 gate——安裝入口就在該分頁裡
         // (版本管理卡),濾掉會讓新伺服器完全沒有安裝 PalDefender 的路徑。
         // 未安裝時分頁預設隱藏(tabPrefs),從「＋」面板開啟;裝了自動顯示。
         const orderedTabs = tabOrder
           .map((id) => TABS.find((tb) => tb.id === id))
           .filter((tb): tb is (typeof TABS)[number] => !!tb)
-          .filter((tb) => tb.id !== "palstats" || SHOW_SPONSOR_FEATURES)
           .filter((tb) => tb.id !== "bossrespawn" || SHOW_BOSS_RESPAWN);
         const visibleTabs = orderedTabs.filter((tb) => LOCKED_TABS.includes(tb.id) || !hiddenTabs.includes(tb.id));
         const manageable = orderedTabs.filter((tb) => !LOCKED_TABS.includes(tb.id));
@@ -850,7 +848,6 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
   const [sources, setSources] = useState<LogSource[]>([]);
   const [source, setSource] = useState<LogSourceId | "">("");
   const [lines, setLines] = useState<string[]>([]);
-  const [entitled, setEntitled] = useState<boolean | null>(null);
   const prefs = useLogPrefs();
   const transRef = useRef<Map<string, string>>(new Map());
   const [, bumpTrans] = useState(0);
@@ -872,10 +869,6 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
       setSending(false);
     }
   };
-
-  useEffect(() => {
-    client.license().then((l) => setEntitled(hasFeature("log-tools", l))).catch(() => setEntitled(false));
-  }, [client]);
 
   useEffect(() => {
     client
@@ -903,11 +896,11 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
     return () => socket.close();
   }, [client, instanceId, source]);
 
-  // 翻譯(贊助者功能 log-tools):把要翻的行一次「批次」送 agent 代理 Google 翻譯(換行合併,
+  // 翻譯:把要翻的行一次「批次」送 agent 代理 Google 翻譯(換行合併,
   // 一個請求翻很多行 → 即時感),結果快取,同句不重複。格式化開著就只翻套不了版的一般行訊息
   // (事件行已中文套版);沒開就整行送翻。英文介面不翻。開著時新行進來會再補翻。
   useEffect(() => {
-    if (entitled !== true || !prefs.translate) return;
+    if (!prefs.translate) return;
     const tlv = translateTarget();
     if (tlv === "en") return;
     // 收集近 300 行裡還沒翻的句子(去重)。
@@ -945,7 +938,7 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
       }
       bumpTrans((v) => v + 1);
     })();
-  }, [entitled, prefs.translate, prefs.format, lines, client]);
+  }, [prefs.translate, prefs.format, lines, client]);
 
   // 只看重點:錯誤/警告過濾(重用 classifyLine 分類);聊天=chat/join/leave/death/capture
   const [logFilter, setLogFilter] = useState<"all" | "issues" | "chat">("all");
@@ -969,7 +962,7 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
 
   const highlight = prefs.highlight; // 免費
   const format = prefs.format; // 免費
-  const translate = entitled === true && prefs.translate; // 贊助者限定
+  const translate = prefs.translate;
   const tl = translateTarget();
 
   return (
@@ -1004,14 +997,10 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
       <div className="flex flex-wrap items-center gap-2">
         <LogToggle on={prefs.highlight} onChange={prefs.setHighlight} label={t("重點標記")} />
         <LogToggle on={prefs.format} onChange={prefs.setFormat} icon={<FiAlignLeft className="size-4" />} label={t("格式化")} />
-        {/* 翻譯:贊助者限定,星星標示;未解鎖時停用。 */}
         <LogToggle
           on={translate}
-          onChange={(v) => entitled === true && prefs.setTranslate(v)}
-          disabled={entitled !== true}
-          icon={<FiStar className={`size-4 ${translate ? "" : "text-pal"}`} />}
+          onChange={prefs.setTranslate}
           label={t("翻譯")}
-          title={entitled === true ? undefined : t("翻譯為贊助者專屬功能")}
         />
         <span className="mx-1 h-5 w-0.5 rounded bg-line" />
         {(
@@ -1034,13 +1023,6 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
           </button>
         ))}
       </div>
-      {entitled === false && (
-        <p className="inline-flex items-center gap-2 rounded-cute border-2 border-sun/40 bg-sun/10 px-3 py-2 text-xs font-bold text-sun">
-          <FiStar className="size-4 shrink-0 text-pal" />
-          {t("日誌翻譯為贊助者專屬功能,到「設定 → 贊助者識別碼」輸入識別碼即可解鎖。")}
-        </p>
-      )}
-
       <div className="relative">
       <div
         ref={scrollBoxRef}

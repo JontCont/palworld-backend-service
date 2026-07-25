@@ -1,5 +1,5 @@
 /**
- * 帕魯物種數值編輯器(贊助者先行版 pal-stats):透過 PalSchema 的 raw DataTable
+ * 帕魯物種數值編輯器:透過 PalSchema 的 raw DataTable
  * patch 修改 `DT_PalMonsterParameter` 的物種基礎數值。
  *
  * 欄位鍵名以實際 uasset dump 交叉驗證(見 .claude/notes/palschema-datatable-fields.md),

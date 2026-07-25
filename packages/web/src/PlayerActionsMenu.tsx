@@ -1,17 +1,14 @@
 import { useState } from "react";
-import { FiX, FiChevronDown, FiTerminal, FiZap, FiStar } from "react-icons/fi";
+import { FiX, FiChevronDown, FiTerminal, FiZap } from "react-icons/fi";
 import type { AgentClient } from "./api";
 import { ConsoleTab } from "./ConsoleTab";
 import { CustomPalModal } from "./CustomPalModal";
 import { GiveItemsModal } from "./GiveItemsModal";
 import { TeleportModal } from "./TeleportModal";
-import { SHOW_SPONSOR_FEATURES } from "./flags";
 import { t, useI18n } from "./i18n";
 import { Overlay, card, btn, btnGhost } from "./ui";
 
-/** 「操作」選單:每一項對應一條指令(預選 + 預填玩家),或自訂帕魯/帕魯蛋彈窗。
- *  cmd = ConsoleTab 要預選的指令名;customPalMode = 開 CustomPalModal(pal / egg)。
- *  贊助者項目(customPalMode)在未公布前由 SHOW_SPONSOR_FEATURES 濾掉。 */
+/** 「操作」選單:每一項對應一條指令(預選 + 預填玩家),或自訂帕魯/帕魯蛋彈窗。 */
 const PLAYER_ACTIONS: {
   label: string;
   cmd?: string;
@@ -23,15 +20,11 @@ const PLAYER_ACTIONS: {
   { label: "給予道具", cmd: "give" },
   { label: "給予帕魯", cmd: "givepal" },
   { label: "給予帕魯蛋", cmd: "giveegg" },
-  ...(SHOW_SPONSOR_FEATURES
-    ? ([
-        { label: "傳送此玩家(贊助者)", teleport: "source" },
-        { label: "傳送到此玩家位置(贊助者)", teleport: "target" },
-        { label: "批量給予道具(贊助者)", bulkItems: true },
-        { label: "給予自訂帕魯(贊助者)", customPalMode: "pal" },
-        { label: "給予自訂帕魯蛋(贊助者)", customPalMode: "egg" },
-      ] as const)
-    : []),
+  { label: "傳送此玩家", teleport: "source" },
+  { label: "傳送到此玩家位置", teleport: "target" },
+  { label: "批量給予道具", bulkItems: true },
+  { label: "給予自訂帕魯", customPalMode: "pal" },
+  { label: "給予自訂帕魯蛋", customPalMode: "egg" },
   { label: "給予經驗值", cmd: "give_exp" },
   { label: "給予科技點數", cmd: "givetechpoints" },
   { label: "給予古代科技點數", cmd: "givebosstechpoints" },
@@ -39,7 +32,7 @@ const PLAYER_ACTIONS: {
 
 /**
  * 玩家操作按鈕(藍色「操作」下拉),放在玩家列表每一列。點選項目跳對應的指令彈窗
- * 或自訂帕魯彈窗,都預填這位玩家(userId)。贊助者限定項目用中空星星標示。
+ * 或自訂帕魯彈窗,都預填這位玩家(userId)。
  */
 export function PlayerActionsMenu({
   client,
@@ -85,7 +78,7 @@ export function PlayerActionsMenu({
                   }}
                 >
                   {a.customPalMode || a.bulkItems || a.teleport ? (
-                    <FiStar className="size-4 text-pal" />
+                    <FiZap className="size-4 text-pal" />
                   ) : (
                     <FiTerminal className="size-4 text-ink-muted" />
                   )}
@@ -122,7 +115,7 @@ export function PlayerActionsMenu({
         </Overlay>
       )}
 
-      {/* 自訂帕魯 / 帕魯蛋(贊助者):CustomPalModal 自帶授權閘門,預填目標玩家。 */}
+      {/* 自訂帕魯 / 帕魯蛋:預填目標玩家。 */}
       {customPalMode && (
         <CustomPalModal
           client={client}

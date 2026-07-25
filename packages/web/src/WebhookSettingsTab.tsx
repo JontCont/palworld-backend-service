@@ -14,7 +14,6 @@ import {
 } from "react-icons/fi";
 import {
   eventMatches,
-  hasFeature,
   WEBHOOK_EVENT_CATALOG,
   type WebhookConfigPublic,
   type WebhookDelivery,
@@ -24,7 +23,7 @@ import {
 import type { AgentClient } from "./api";
 import { CopyPath } from "./CopyPath";
 import { t, useI18n } from "./i18n";
-import { SponsorLockNotice, EmptyState, btn, btnDanger, btnGhost, card, errorCls, inputCls, labelCls, Select } from "./ui";
+import { EmptyState, btn, btnDanger, btnGhost, card, errorCls, inputCls, labelCls, Select } from "./ui";
 
 const ALL_EVENT_TYPES: WebhookEventType[] = WEBHOOK_EVENT_CATALOG.flatMap((g) => g.events.map((e) => e.type));
 const EVENT_LABELS: Partial<Record<WebhookEventType, string>> = Object.fromEntries(
@@ -127,16 +126,13 @@ function fmtTime(iso: string): string {
 }
 
 /**
- * Webhook / Discord 機器人整合(贊助者先行版 webhooks):伺服器事件(玩家加入/離開、
+ * Webhook / Discord 機器人整合:伺服器事件(玩家加入/離開、
  * 頭目擊殺、備份完成等)即時推送到自訂 URL(HMAC 簽章)或 Discord Incoming Webhook。
  * API 見 api.ts 的 webhooks/createWebhook/updateWebhook/.../testWebhook/webhookDeliveries,
  * 型別在 @palserver/shared(WebhookConfigPublic/WebhookDelivery/WEBHOOK_EVENT_CATALOG)。
- *
- * 贊助者先行版:未解鎖時只顯示先行版說明,不顯示表單(比照 BossRespawnTab.tsx)。
  */
 export function WebhookSettingsTab({ client, instanceId }: { client: AgentClient; instanceId: string }) {
   useI18n();
-  const [entitled, setEntitled] = useState<boolean | null>(null);
   const [webhooks, setWebhooks] = useState<WebhookConfigPublic[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -168,28 +164,10 @@ export function WebhookSettingsTab({ client, instanceId }: { client: AgentClient
   }, [client, instanceId]);
 
   useEffect(() => {
-    client
-      .license()
-      .then((l) => setEntitled(hasFeature("webhooks", l)))
-      .catch(() => setEntitled(false));
-  }, [client, instanceId]);
+    void refresh();
+  }, [refresh]);
 
-  useEffect(() => {
-    if (entitled) void refresh();
-  }, [entitled, refresh]);
-
-  const locked = entitled === false;
-
-  // 贊助者限定:未解鎖只顯示先行版說明,下面的表單/清單一律不顯示、也不預覽。
-  if (locked) {
-    return (
-      <div className="flex flex-col gap-4">
-        <SponsorLockNotice>{t("這是贊助者先行版功能。到「設定 → 贊助者識別碼」輸入識別碼即可使用。")}</SponsorLockNotice>
-      </div>
-    );
-  }
-
-  if (entitled === null || webhooks === null) return <p className="text-ink-muted">{error ?? t("載入中…")}</p>;
+  if (webhooks === null) return <p className="text-ink-muted">{error ?? t("載入中…")}</p>;
 
   const create = async () => {
     setCreating(true);

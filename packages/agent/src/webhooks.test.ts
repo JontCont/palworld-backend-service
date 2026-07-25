@@ -56,7 +56,7 @@ const chatEvent = (): AgentEvent => ({
 test("generic:送出帶有效 HMAC 簽章 + 正確 header/body", async () => {
   const { store } = fakeStore();
   const rx = await receiver(200);
-  const svc = new WebhooksService(store, "test", () => true);
+  const svc = new WebhooksService(store, "test");
   const { secret } = await svc.create(INST, { url: rx.url, events: ["player.chat"], format: "generic" });
 
   await svc.dispatchEvent(chatEvent());
@@ -79,7 +79,7 @@ test("generic:送出帶有效 HMAC 簽章 + 正確 header/body", async () => {
 test("discord:送 embed、不帶簽章 header", async () => {
   const { store } = fakeStore();
   const rx = await receiver(200);
-  const svc = new WebhooksService(store, "test", () => true);
+  const svc = new WebhooksService(store, "test");
   await svc.create(INST, { url: rx.url, events: ["*"], format: "discord" });
 
   await svc.dispatchEvent(chatEvent());
@@ -92,11 +92,11 @@ test("discord:送 embed、不帶簽章 header", async () => {
   assert.equal(payload.embeds[0].title, "聊天");
 });
 
-test("未授權:featureEnabled=false → 完全不送出", async () => {
+test("沒有授權狀態時仍正常送出", async () => {
   const { store } = fakeStore();
   const rx = await receiver(200);
-  const svc = new WebhooksService(store, "test", () => false);
-  await new WebhooksService(store, "test", () => true).create(INST, {
+  const svc = new WebhooksService(store, "test");
+  await svc.create(INST, {
     url: rx.url,
     events: ["*"],
     format: "generic",
@@ -104,13 +104,13 @@ test("未授權:featureEnabled=false → 完全不送出", async () => {
 
   await svc.dispatchEvent(chatEvent());
   rx.close();
-  assert.equal(rx.requests.length, 0);
+  assert.equal(rx.requests.length, 1);
 });
 
 test("失敗(500):記為失敗並進重試佇列", async () => {
   const { store, dir } = fakeStore();
   const rx = await receiver(500);
-  const svc = new WebhooksService(store, "test", () => true);
+  const svc = new WebhooksService(store, "test");
   const { config } = await svc.create(INST, { url: rx.url, events: ["player.chat"], format: "generic" });
 
   await svc.dispatchEvent(chatEvent());
@@ -130,7 +130,7 @@ test("失敗(500):記為失敗並進重試佇列", async () => {
 test("訂閱不符的事件不觸發;list 隱藏 secret 只回 secretSet", async () => {
   const { store } = fakeStore();
   const rx = await receiver(200);
-  const svc = new WebhooksService(store, "test", () => true);
+  const svc = new WebhooksService(store, "test");
   await svc.create(INST, { url: rx.url, events: ["server.crash"], format: "generic" });
 
   await svc.dispatchEvent(chatEvent()); // player.chat 不在訂閱內

@@ -4,7 +4,7 @@ import type { Dictionary } from '@/i18n/dictionaries';
 /** 三個亮點對應的圖示,順序需與 dictionaries 的 highlights.items 一致。 */
 const ICONS = [MapIcon, PaletteIcon, SponsorIcon];
 
-/** v2.0.1 三大新功能亮點:世界地圖、主題系統、贊助者先行版。純文字卡片, 不依賴截圖。 */
+/** v2.0.1 三大新功能亮點:世界地圖、主題系統、進階管理功能。純文字卡片, 不依賴截圖。 */
 export default function Highlights({ d }: { d: Dictionary['highlights'] }) {
   return (
     <section>

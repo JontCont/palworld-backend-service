@@ -113,8 +113,8 @@ export function PerformanceTab({
         {/* 第二行:記憶體 / 伺服器 FPS / 影格時間 */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Stat icon={<FiHardDrive className="size-4" />} label={t("記憶體")} value={stats ? (hasFiniteLimit(memoryLimit) ? `${fmtBytes(stats.memoryBytes)} / ${fmtBytes(memoryLimit)}` : fmtBytes(stats.memoryBytes)) : "—"} />
-          <Stat icon={<FiZap className="size-4" />} label={t("伺服器 FPS")} value={metrics ? String(metrics.serverfps) : "—"} />
-          <Stat icon={<FiActivity className="size-4" />} label={t("影格時間")} value={metrics ? `${metrics.serverframetime.toFixed(1)} ms` : "—"} />
+          <Stat icon={<FiZap className="size-4" />} label={t("伺服器 FPS")} value={fmtMetric(metrics?.serverfps, 0)} />
+          <Stat icon={<FiActivity className="size-4" />} label={t("影格時間")} value={fmtMetric(metrics?.serverframetime, 1, " ms")} />
         </div>
         {!metrics && <p className="text-xs text-ink-muted">{t("伺服器 FPS / 影格時間 / 遊戲時間需啟用 REST API")}</p>}
       </div>
@@ -325,6 +325,10 @@ export function fmtBytes(n: number): string {
 
 export function knownCpuSample(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+export function fmtMetric(value: number | null | undefined, digits: number, suffix = ""): string {
+  return typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(digits)}${suffix}` : "—";
 }
 
 function hasFiniteLimit(value: number): boolean {

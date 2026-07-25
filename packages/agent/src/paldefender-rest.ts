@@ -470,8 +470,8 @@ export async function getPdPlayers(rec: InstanceRecord, ctx: DriverContext): Pro
   }
 }
 
-/** 公會 + 據點(PalDefender /guilds)。據點位置與公會名稱人人可見;detailed=false(非贊助者)
- * 時只把「成員名單 / 會長名」拿掉(那些屬於公會詳情,贊助者先行版),據點座標與公會名照給。
+/** 公會 + 據點(PalDefender /guilds)。detailed=false 時只回基本據點資料,
+ * detailed=true 時包含成員名單與會長名稱。
  * 前端拿據點的 world_pos 走 savToMap 畫到地圖;detailed 旗標讓前端決定點擊走 REST 詳情或存檔版。 */
 export async function getPdGuilds(
   rec: InstanceRecord,
@@ -493,7 +493,7 @@ export async function getPdGuilds(
         id,
         name: String(g.name ?? ""),
         level: Number(g.Level ?? 0),
-        // 會長名與成員名單屬公會詳情(贊助者先行);非贊助者不給,但據點/公會名/人數照顯示。
+        // 基本模式保留據點/公會名/人數,詳細模式再附會長名與成員名單。
         adminName: detailed ? String(admin.name ?? "") : "",
         memberCount: Number(g.member_count ?? (Array.isArray(g.members) ? g.members.length : 0)),
         members: detailed && Array.isArray(g.members) ? g.members.map(String) : [],

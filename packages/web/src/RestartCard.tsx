@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { FiAlertTriangle, FiCheck, FiClock, FiCpu, FiPlus, FiRefreshCw, FiStar, FiX } from "react-icons/fi";
-import { hasFeature } from "@palserver/shared";
+import { FiAlertTriangle, FiCheck, FiClock, FiCpu, FiPlus, FiRefreshCw, FiX } from "react-icons/fi";
 import type { RestartPolicy, RestartStatus } from "@palserver/shared";
 import type { AgentClient } from "./api";
 import { t, useI18n } from "./i18n";
@@ -57,15 +56,10 @@ export function RestartCard({ client, instanceId }: { client: AgentClient; insta
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [entitled, setEntitled] = useState<boolean | null>(null);
   // 排程 UI 是三選項(每隔一段時間/每天固定時間/每天固定多個時間),但 policy
   // schema 只有 interval/daily 兩種 mode —— 「單一 vs 多個」由 dailyTimes 長度
   // 區分;kindOverride 記住使用者點了「多個」但還只填一格的狀態。
   const [kindOverride, setKindOverride] = useState<"daily" | "daily-multi" | null>(null);
-
-  useEffect(() => {
-    client.license().then((l) => setEntitled(hasFeature("daily-restart", l))).catch(() => setEntitled(false));
-  }, [client]);
 
   const refresh = useCallback(async () => {
     try {
@@ -150,7 +144,7 @@ export function RestartCard({ client, instanceId }: { client: AgentClient; insta
         onToggle={(enabled) => patch({ scheduled: { ...draft.scheduled, enabled } })}
       >
         {(() => {
-          // 三選項:interval / daily(單一時刻) / daily-multi(多時刻,贊助者限定)。
+          // 三選項:interval / daily(單一時刻) / daily-multi(多時刻)。
           const times = draft.scheduled.dailyTimes;
           const kind: "interval" | "daily" | "daily-multi" =
             draft.scheduled.mode === "interval"
@@ -158,19 +152,13 @@ export function RestartCard({ client, instanceId }: { client: AgentClient; insta
               : times.length > 1
                 ? "daily-multi"
                 : (kindOverride ?? "daily");
-          // 閘門上線前就已儲存多時刻的舊設定不鎖(grandfather,與 agent 端一致)
-          const grandfathered =
-            status.policy.scheduled.enabled &&
-            status.policy.scheduled.mode === "daily" &&
-            status.policy.scheduled.dailyTimes.length > 1;
-          const multiLocked = entitled !== true && !grandfathered;
           const setTimes = (next: string[]) => {
             patch({ scheduled: { ...draft.scheduled, mode: "daily", dailyTimes: next } });
           };
           const OPTIONS = [
-            { k: "interval" as const, label: t("每隔一段時間"), star: false, locked: false },
-            { k: "daily" as const, label: t("每天固定時間"), star: false, locked: false },
-            { k: "daily-multi" as const, label: t("每天固定多個時間"), star: true, locked: multiLocked },
+            { k: "interval" as const, label: t("每隔一段時間") },
+            { k: "daily" as const, label: t("每天固定時間") },
+            { k: "daily-multi" as const, label: t("每天固定多個時間") },
           ];
           return (
             <>
@@ -179,15 +167,11 @@ export function RestartCard({ client, instanceId }: { client: AgentClient; insta
                   <button
                     key={o.k}
                     className={
-                      (kind === o.k
+                      kind === o.k
                         ? "rounded-full bg-pal px-4 py-1.5 text-[13px] font-extrabold text-white"
-                        : "rounded-full border-2 border-line bg-card-soft px-4 py-1.5 text-[13px] font-extrabold text-ink-muted transition hover:border-pal") +
-                      (o.locked ? " opacity-50" : "")
+                        : "rounded-full border-2 border-line bg-card-soft px-4 py-1.5 text-[13px] font-extrabold text-ink-muted transition hover:border-pal"
                     }
-                    disabled={o.locked}
-                    title={o.locked ? t("此功能為贊助者專屬功能,可在設定頁輸入贊助者識別碼解鎖。") : undefined}
                     onClick={() => {
-                      if (o.locked) return;
                       if (o.k === "interval") {
                         setKindOverride(null);
                         patch({ scheduled: { ...draft.scheduled, mode: "interval" } });
@@ -200,23 +184,10 @@ export function RestartCard({ client, instanceId }: { client: AgentClient; insta
                       }
                     }}
                   >
-                    {o.star ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <FiStar className={kind === o.k ? "size-3.5" : "size-3.5 text-pal"} />
-                        {o.label}
-                      </span>
-                    ) : (
-                      o.label
-                    )}
+                    {o.label}
                   </button>
                 ))}
               </div>
-              {multiLocked && (
-                <p className="inline-flex items-start gap-1.5 text-[12px] leading-relaxed text-ink-muted">
-                  <FiStar className="mt-0.5 size-3.5 shrink-0 text-pal" />
-                  {t("免費版可設定 1 個時刻;多個時刻(如 00:00, 06:00, 12:00, 18:00)為贊助者專屬功能,可在設定頁輸入贊助者識別碼解鎖。")}
-                </p>
-              )}
               {kind === "interval" && (
                 <Field label={t("每隔幾分鐘重啟")}>
                   <input

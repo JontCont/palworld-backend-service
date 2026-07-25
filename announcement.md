@@ -228,15 +228,15 @@ PalDefender / UE4SS の公式リリースページを確認するか、[Discord]
 
 ---
 id: 2026-07-sponsor-features
-title: 贊助者專屬功能來囉!
+title: 進階功能全面開放!
 lang: zh
 ---
 
 哈囉島主們~ 💛
 
-palserver GUI 一直是**免費開源**的。這些是**贊助者專屬**的進階功能 —— 你的支持讓我們能把專案繼續做下去、做得更好。
+palserver GUI 一直是**免費開源**的。以下進階功能現在全部開放,不需要識別碼或贊助資格。
 
-## 目前的贊助者功能
+## 全面開放的進階功能
 
 - **自訂帕魯** — 直接給玩家一隻客製帕魯:詞條、體質(IV)、星星、靈魂都能調。
 - **帕魯數值編輯器** — 用 PalSchema 改物種基礎數值(HP / 攻擊 / 防禦 / 首領…)。
@@ -244,11 +244,11 @@ palserver GUI 一直是**免費開源**的。這些是**贊助者專屬**的進�
 - **批量給予道具** — 物品選單 + 數量,一次發好發滿。
 - **地圖公會詳情** — 在線上地圖看公會名稱 / 成員 / 據點。
 - **日誌重點標記 + 翻譯** — 日誌事件自動上色,把生硬的英文日誌一鍵翻成你的語言。
-- **專屬佈景主題** — 白銀、翡翠、午夜紫、櫻花粉、橘色貓貓。
+- **佈景主題** — 白銀、翡翠、午夜紫、櫻花粉、橘色貓貓。
 
-## 怎麼解鎖?
+## 自願支持
 
-到 **設定 → 贊助者識別碼** 輸入識別碼即可(一組綁一台伺服器)。還不是贊助者?歡迎[請我們喝杯咖啡](https://buymeacoffee.com/dalufish)立刻解鎖上面全部功能,也讓專案能走得更遠。
+所有功能開箱即用。喜歡這個專案的話,仍歡迎自願[請我們喝杯咖啡](https://buymeacoffee.com/dalufish),支持後續維護與開發;贊助不影響功能存取。
 
 謝謝每一位讓帕魯世界更好玩的你! 🐾
 
@@ -256,15 +256,15 @@ palserver GUI 一直是**免費開源**的。這些是**贊助者專屬**的進�
 
 ---
 id: 2026-07-sponsor-features
-title: 赞助者专属功能来啦!
+title: 高级功能全面开放!
 lang: zh-CN
 ---
 
 嗨,岛主们~ 💛
 
-palserver GUI 一直是**免费开源**的。这些是**赞助者专属**的进阶功能 —— 你的支持让我们能把项目继续做下去、做得更好。
+palserver GUI 一直是**免费开源**的。以下高级功能现在全部开放,无需识别码或赞助资格。
 
-## 目前的赞助者功能
+## 全面开放的高级功能
 
 - **自定义帕鲁** — 直接给玩家一只定制帕鲁:词条、体质(IV)、星级、灵魂都能调。
 - **帕鲁数值编辑器** — 用 PalSchema 改物种基础数值(HP / 攻击 / 防御 / 首领…)。
@@ -272,11 +272,11 @@ palserver GUI 一直是**免费开源**的。这些是**赞助者专属**的进�
 - **批量给予道具** — 物品菜单 + 数量,一次发好发满。
 - **地图公会详情** — 在线上地图可查看公会名称 / 成员 / 据点。
 - **日志重点标记 + 翻译** — 日志事件自动上色,把生硬的英文日志一键翻译成你的语言。
-- **专属主题** — 白银、翡翠、午夜紫、樱花粉、橙色猫猫。
+- **主题** — 白银、翡翠、午夜紫、樱花粉、橙色猫猫。
 
-## 怎么解锁?
+## 自愿支持
 
-到 **设置 → 赞助者识别码** 输入识别码即可(一组绑一台服务器)。还不是赞助者?欢迎[去爱发电支持我们](https://ifdian.net/a/dalufish)立刻解锁上面全部功能,也让项目走得更远。
+所有功能开箱即用。喜欢这个项目的话,仍欢迎自愿[去爱发电支持我们](https://ifdian.net/a/dalufish),支持后续维护与开发;赞助不影响功能使用。
 
 谢谢每一位让帕鲁世界更好玩的你! 🐾
 
@@ -284,15 +284,15 @@ palserver GUI 一直是**免费开源**的。这些是**赞助者专属**的进�
 
 ---
 id: 2026-07-sponsor-features
-title: Sponsor perks are here!
+title: Advanced features are open to everyone!
 lang: en
 ---
 
 Hey island owners~ 💛
 
-palserver GUI is and stays **free & open source**. These are **sponsor-only** advanced features — your support keeps the project going and helps us make it better.
+palserver GUI is and stays **free and open source**. The advanced features below are now available without a code or sponsor status.
 
-## Current sponsor features
+## Advanced features for everyone
 
 - **Custom Pal** — hand a player a fully customized Pal: passives, IVs, condense stars, and souls.
 - **Pal stats editor** — tweak species base stats via PalSchema (HP / attack / defense / boss…).
@@ -300,11 +300,11 @@ palserver GUI is and stays **free & open source**. These are **sponsor-only** ad
 - **Bulk item give** — an item picker + quantity to hand out items in one go.
 - **Guild details on the map** — see guild name / members / bases on the live map.
 - **Log highlight + translation** — auto-color log events and one-click translate raw English logs into your language.
-- **Exclusive themes** — Silver, Emerald, Midnight Lilac, Cherry Blossom, and Orange Cat.
+- **Themes** — Silver, Emerald, Midnight Lilac, Cherry Blossom, and Orange Cat.
 
-## How to unlock
+## Voluntary support
 
-Enter your code under **Settings → Sponsor code** (one code per server). Not a sponsor yet? [Buy us a coffee](https://buymeacoffee.com/dalufish) to unlock everything above right away and help the project go further.
+Every feature works out of the box. You can still voluntarily [buy us a coffee](https://buymeacoffee.com/dalufish) to support maintenance and future development; sponsorship does not affect access.
 
 Thanks to everyone making the Palworld world more fun! 🐾
 
@@ -312,15 +312,15 @@ Thanks to everyone making the Palworld world more fun! 🐾
 
 ---
 id: 2026-07-sponsor-features
-title: スポンサー特典が登場!
+title: 高度な機能をすべてのユーザーに開放!
 lang: ja
 ---
 
 島主のみなさん~ 💛
 
-palserver GUI はこれからも**無料 & オープンソース**です。これらは**スポンサー限定**の高度な機能です —— みなさんの支援がプロジェクトの継続と改善につながります。
+palserver GUI はこれからも**無料 & オープンソース**です。以下の高度な機能は、コードやスポンサー資格なしで利用できます。
 
-## 現在のスポンサー機能
+## すべてのユーザー向け高度な機能
 
 - **カスタムパル** — パッシブ・IV・凝縮の星・ソウルまで指定したパルをプレイヤーに付与。
 - **パル数値エディタ** — PalSchema で種族の基礎数値を調整(HP / 攻撃 / 防御 / ボス…)。
@@ -328,11 +328,11 @@ palserver GUI はこれからも**無料 & オープンソース**です。こ�
 - **アイテム一括付与** — アイテム選択 + 数量でまとめて配布。
 - **マップのギルド詳細** — ライブマップでギルド名 / メンバー / 拠点を表示。
 - **ログのハイライト + 翻訳** — ログイベントを自動色分け、生の英語ログをワンクリックで翻訳。
-- **限定テーマ** — シルバー、エメラルド、ミッドナイト・ライラック、桜ピンク、オレンジキャット。
+- **テーマ** — シルバー、エメラルド、ミッドナイト・ライラック、桜ピンク、オレンジキャット。
 
-## 解除方法
+## 任意の支援
 
-**設定 → スポンサーコード** でコードを入力してください(1コードにつき1サーバー)。まだスポンサーでない方は、[コーヒーを一杯](https://buymeacoffee.com/dalufish)ご馳走いただくと上記すべてを即解除でき、プロジェクトの継続にもつながります。
+すべての機能はそのまま利用できます。保守と今後の開発を支えるため、任意で[コーヒーを一杯](https://buymeacoffee.com/dalufish)ご支援いただけますが、スポンサーの有無は機能へのアクセスに影響しません。
 
 パルワールドをもっと楽しくしてくれるみなさんに感謝! 🐾
 

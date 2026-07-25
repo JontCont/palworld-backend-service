@@ -20,8 +20,8 @@ function writeBotState(instanceDir: string, settings: Record<string, unknown>): 
   fs.mkdirSync(instanceDir, { recursive: true });
   fs.writeFileSync(path.join(instanceDir, "discord-bot.json"), JSON.stringify({ settings }, null, 2));
 }
-function mgr(instanceDir: string, feature = true): DiscordBotManager {
-  return new DiscordBotManager(makeStore(instanceDir), "http://127.0.0.1:0", () => feature);
+function mgr(instanceDir: string): DiscordBotManager {
+  return new DiscordBotManager(makeStore(instanceDir), "http://127.0.0.1:0");
 }
 function withDir(fn: (dir: string) => void): void {
   const dir = tempDir("dbm-");
@@ -82,10 +82,10 @@ test("bot 未啟用 → 即使有聊天路由也 false", () => {
   });
 });
 
-test("授權閘門關閉 → false", () => {
+test("啟用中的路由不依賴授權狀態", () => {
   withDir((dir) => {
     writeBotState(dir, { enabled: true, notifyRoutes: [{ channelId: "123", events: ["player.chat"] }] });
-    assert.equal(mgr(dir, false).wantsLogEvents("i1"), false);
+    assert.equal(mgr(dir).wantsLogEvents("i1"), true);
   });
 });
 

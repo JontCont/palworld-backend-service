@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance } from "fastify";
 import {
   COMMANDS,
   COOP_HOST_UID,
@@ -102,7 +102,7 @@ import { getPalDefenderConfig, writePalDefenderConfig } from "./paldefender-conf
 import { getPlayerDetail, getPdPlayers, getPdGuilds, getPdGuild, getPdRestStatus, setPdRestEnabled, setPdRestPort, provisionPdToken, deleteBase, sendPdAlert } from "./paldefender-rest.js";
 import { mergeKnownPlayers } from "./player-roster.js";
 import { setTelemetryEnabled, telemetryStatus, track } from "./telemetry.js";
-import { licenseStatus, setLicenseKey, clearLicenseKey, featureEnabled } from "./license.js";
+import { licenseStatus, setLicenseKey, clearLicenseKey } from "./license.js";
 import { giveCustomPal } from "./pals.js";
 import { applyUpdate, getUpdateStatus, setUpdatePrefs, type UpdateOps } from "./self-update.js";
 import { readFileInPod } from "./k8s-files.js";
@@ -515,11 +515,8 @@ export function registerRoutes(
     return { ok: true };
   });
 
-  // ── 配置評估健檢(進階顯示/贊助者):主機硬體+網路實測與評分 ──
-  app.get("/api/system-review", async (_req, reply) => {
-    if (!featureEnabled("dashboard-stats")) {
-      return reply.code(403).send({ error: "配置評估健檢為贊助者專屬功能,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
+  // ── 配置評估健檢:主機硬體+網路實測與評分 ──
+  app.get("/api/system-review", async () => {
     const specs = await collectSpecs();
     // 需求依「同時運行的伺服器數」放大:建立越多台,規格門檻越高、不夠就扣分。
     return reviewSpecs(specs, store.list().length);
@@ -1323,11 +1320,8 @@ export function registerRoutes(
   /** 各模組元件的最新穩定版(給「有新版」徽章;agent 端 6h 快取)。 */
   app.get("/api/mods/latest", async () => latestModVersions());
 
-  /** 存檔解鎖:全體玩家快速傳送全開(贊助者;需伺服器停止;動手前整世界備份)。 */
+  /** 存檔解鎖:全體玩家快速傳送全開(需伺服器停止;動手前整世界備份)。 */
   app.post("/api/instances/:id/save-unlocks/fast-travel", async (req, reply) => {
-    if (!featureEnabled("map-unlocks")) {
-      return reply.code(403).send({ error: "存檔解鎖為贊助者專屬功能,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     const rec = getOr404((req.params as { id: string }).id);
     if (await isRunning(rec)) {
       return reply.code(409).send({ error: "請先停止伺服器再執行存檔解鎖(運行中寫入會損壞存檔)" });
@@ -1416,24 +1410,17 @@ export function registerRoutes(
 
   app.get("/api/instances/:id/guilds", async (req) => {
     const rec = getOr404((req.params as { id: string }).id);
-    // 據點位置與公會名稱人人可見;成員名單/會長等公會詳情才是贊助者先行版功能(guild-map)。
-    return getPdGuilds(rec, ctxOf(rec), featureEnabled("guild-map"));
+    return getPdGuilds(rec, ctxOf(rec), true);
   });
 
-  app.get("/api/instances/:id/guilds/:guildId", async (req, reply) => {
-    if (!featureEnabled("guild-map")) {
-      return reply.code(403).send({ error: "公會詳情為贊助者先行版功能,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
+  app.get("/api/instances/:id/guilds/:guildId", async (req) => {
     const { id, guildId } = req.params as { id: string; guildId: string };
     const rec = getOr404(id);
     return getPdGuild(rec, ctxOf(rec), guildId);
   });
 
-  // 刪除據點(不可逆):經 PalDefender 即時拆除,伺服器運行中即可執行、不需停服。贊助者先行。
+  // 刪除據點(不可逆):經 PalDefender 即時拆除,伺服器運行中即可執行、不需停服。
   app.post("/api/instances/:id/guilds/base/:baseId/delete", async (req, reply) => {
-    if (!featureEnabled("delete-base")) {
-      return reply.code(403).send({ error: "刪除據點為贊助者先行版功能,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     const rec = getOr404((req.params as { id: string }).id);
     if (serverPlatform(rec) !== "windows") {
       return reply.code(409).send({ error: "刪除據點目前僅支援 Windows 伺服器" });
@@ -1635,13 +1622,8 @@ export function registerRoutes(
     return { command, output };
   });
 
-  // 自訂帕魯(贊助者先行版 custom-pal):PalDefender 範本 + RCON givepal_j。
+  // 自訂帕魯:PalDefender 範本 + RCON givepal_j。
   app.post("/api/instances/:id/pals/give", async (req, reply) => {
-    if (!featureEnabled("custom-pal")) {
-      return reply
-        .code(403)
-        .send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     const rec = getOr404((req.params as { id: string }).id);
     if (serverPlatform(rec) !== "windows") {
       return reply.code(409).send({ error: "自訂帕魯目前僅支援 Windows 伺服器" });
@@ -1655,13 +1637,8 @@ export function registerRoutes(
     return { output };
   });
 
-  // 批量給予道具(贊助者先行版 bulk-items):PalDefender RCON `giveitems`。
+  // 批量給予道具:PalDefender RCON `giveitems`。
   app.post("/api/instances/:id/items/give", async (req, reply) => {
-    if (!featureEnabled("bulk-items")) {
-      return reply
-        .code(403)
-        .send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     const rec = getOr404((req.params as { id: string }).id);
     if (serverPlatform(rec) !== "windows") {
       return reply.code(409).send({ error: "批量給予道具目前僅支援 Windows 伺服器" });
@@ -1690,13 +1667,8 @@ export function registerRoutes(
     return { output };
   });
 
-  // 傳送玩家(贊助者先行版 teleport):PalDefender `tp <來源> <目標玩家|x y z>`。
+  // 傳送玩家:PalDefender `tp <來源> <目標玩家|x y z>`。
   app.post("/api/instances/:id/teleport", async (req, reply) => {
-    if (!featureEnabled("teleport")) {
-      return reply
-        .code(403)
-        .send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     const rec = getOr404((req.params as { id: string }).id);
     if (serverPlatform(rec) !== "windows") {
       return reply.code(409).send({ error: "傳送玩家目前僅支援 Windows 伺服器" });
@@ -1777,16 +1749,13 @@ export function registerRoutes(
     return { ...status, applied: "reloaded" };
   });
 
-  // ── PalSchema:物種數值編輯器(贊助者先行版 pal-stats)──
+  // ── PalSchema:物種數值編輯器 ──
   app.get("/api/instances/:id/palschema", async (req) => {
     const rec = getOr404((req.params as { id: string }).id);
     return await getPalSchemaStatus(rec, ctxOf(rec));
   });
 
   app.post("/api/instances/:id/palschema/install", async (req, reply) => {
-    if (!featureEnabled("pal-stats")) {
-      return reply.code(403).send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     const rec = getOr404((req.params as { id: string }).id);
     // 同 mods:執行中 DLL 被鎖,無法覆寫/建立。
     if (await isRunning(rec)) {
@@ -1808,9 +1777,6 @@ export function registerRoutes(
   });
 
   app.post("/api/instances/:id/palschema/uninstall", async (req, reply) => {
-    if (!featureEnabled("pal-stats")) {
-      return reply.code(403).send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     const rec = getOr404((req.params as { id: string }).id);
     if (await isRunning(rec)) {
       return reply.code(409).send({ error: "請先停止伺服器再移除 PalSchema(執行中時檔案被鎖定)" });
@@ -1825,9 +1791,6 @@ export function registerRoutes(
   });
 
   app.put("/api/instances/:id/pal-stats", async (req, reply) => {
-    if (!featureEnabled("pal-stats")) {
-      return reply.code(403).send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     const rec = getOr404((req.params as { id: string }).id);
     const valueShape = Object.fromEntries(
       PAL_STAT_KEYS.map((k) => {
@@ -1849,16 +1812,13 @@ export function registerRoutes(
     return await clearPalStats(rec, ctxOf(rec));
   });
 
-  // ── 頭目重生時間(贊助者先行版 boss-respawn;純伺服器端 UE4SS Lua 模組)──
+  // ── 頭目重生時間(純伺服器端 UE4SS Lua 模組)──
   app.get("/api/instances/:id/boss-respawns", async (req) => {
     const rec = getOr404((req.params as { id: string }).id);
     return await getBossReporterStatus(rec, ctxOf(rec));
   });
 
   app.post("/api/instances/:id/boss-respawns/install", async (req, reply) => {
-    if (!featureEnabled("boss-respawn")) {
-      return reply.code(403).send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     const rec = getOr404((req.params as { id: string }).id);
     // 執行中 UE4SS DLL 被鎖,無法覆寫/建立(同 PalSchema)。
     if (await isRunning(rec)) {
@@ -1869,9 +1829,6 @@ export function registerRoutes(
   });
 
   app.post("/api/instances/:id/boss-respawns/uninstall", async (req, reply) => {
-    if (!featureEnabled("boss-respawn")) {
-      return reply.code(403).send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     const rec = getOr404((req.params as { id: string }).id);
     if (await isRunning(rec)) {
       return reply.code(409).send({ error: "請先停止伺服器再移除頭目回報模組(執行中時檔案被鎖定)" });
@@ -2025,16 +1982,14 @@ export function registerRoutes(
     return { externalAddress: updated.externalAddress ?? null };
   });
 
-  // ── 公開地圖:服主一鍵把地圖公開到全網(贊助者先行版 public-map)。
+  // ── 公開地圖:服主一鍵把地圖公開到全網。
   // 過濾在 agent 端(public-map.ts)完成,這裡只是薄薄一層 CRUD + 立即發布觸發。
-  // gating 只擋「新開啟」與「換連結」:關閉與查看狀態永遠放行,授權過期的服主
-  // 才能把已公開的地圖關掉;背景 tick 另外會在授權過期時自動跳過發布(見 public-map.ts)。
   app.get("/api/instances/:id/public-map", async (req) => {
     const rec = getOr404((req.params as { id: string }).id);
     return publicMap.status(rec);
   });
 
-  app.put("/api/instances/:id/public-map", async (req, reply) => {
+  app.put("/api/instances/:id/public-map", async (req) => {
     const rec = getOr404((req.params as { id: string }).id);
     const { settings } = z
       .object({
@@ -2050,33 +2005,16 @@ export function registerRoutes(
         }),
       })
       .parse(req.body);
-    // 只擋「從關閉開啟」這個轉換;已經開啟時改子設定(或重送 enabled:true)不擋,
-    // 讓授權過期但先前已開啟的服主仍能調整顯示內容(實際發布與否由 tick 的 gate 把關)。
-    if (settings.enabled === true && !publicMap.status(rec).settings.enabled && !featureEnabled("public-map")) {
-      return reply
-        .code(403)
-        .send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     return publicMap.updateSettings(rec, settings);
   });
 
-  app.post("/api/instances/:id/public-map/rotate", async (req, reply) => {
-    if (!featureEnabled("public-map")) {
-      return reply
-        .code(403)
-        .send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    }
+  app.post("/api/instances/:id/public-map/rotate", async (req) => {
     const rec = getOr404((req.params as { id: string }).id);
     return publicMap.rotate(rec);
   });
 
-  // ── Webhook / Discord 機器人整合(贊助限定,整組閘門)。事件推送、簽章、重試都在
+  // ── Webhook / Discord 機器人整合。事件推送、簽章、重試都在
   // webhooks.ts;這裡是薄薄一層 CRUD。secret 只在建立/換發時回傳一次,list 只回 secretSet。
-  const webhookGate = (reply: FastifyReply): boolean => {
-    if (featureEnabled("webhooks")) return true;
-    void reply.code(403).send({ error: "此功能為贊助者先行版,請在設定頁輸入贊助者識別碼解鎖。" });
-    return false;
-  };
   const webhookInput = z.object({
     url: z.string().url(),
     events: z.array(z.string().min(1)).min(1),
@@ -2088,13 +2026,11 @@ export function registerRoutes(
   const whParams = (req: { params: unknown }) => req.params as { id: string; whId: string };
 
   app.get("/api/instances/:id/webhooks", async (req, reply) => {
-    if (!webhookGate(reply)) return reply;
     const rec = getOr404((req.params as { id: string }).id);
     return webhooks.list(rec.id);
   });
 
   app.post("/api/instances/:id/webhooks", async (req, reply) => {
-    if (!webhookGate(reply)) return reply;
     const rec = getOr404((req.params as { id: string }).id);
     const input = webhookInput.parse(req.body);
     reply.code(201);
@@ -2102,7 +2038,6 @@ export function registerRoutes(
   });
 
   app.put("/api/instances/:id/webhooks/:whId", async (req, reply) => {
-    if (!webhookGate(reply)) return reply;
     const { id, whId } = whParams(req);
     getOr404(id);
     const patch = webhookInput.partial().parse(req.body);
@@ -2111,7 +2046,6 @@ export function registerRoutes(
   });
 
   app.delete("/api/instances/:id/webhooks/:whId", async (req, reply) => {
-    if (!webhookGate(reply)) return reply;
     const { id, whId } = whParams(req);
     getOr404(id);
     const ok = await webhooks.remove(id, whId);
@@ -2119,7 +2053,6 @@ export function registerRoutes(
   });
 
   app.post("/api/instances/:id/webhooks/:whId/rotate-secret", async (req, reply) => {
-    if (!webhookGate(reply)) return reply;
     const { id, whId } = whParams(req);
     getOr404(id);
     const rotated = await webhooks.rotateSecret(id, whId);
@@ -2127,7 +2060,6 @@ export function registerRoutes(
   });
 
   app.post("/api/instances/:id/webhooks/:whId/test", async (req, reply) => {
-    if (!webhookGate(reply)) return reply;
     const { id, whId } = whParams(req);
     getOr404(id);
     const result = await webhooks.testSend(id, whId);
@@ -2135,13 +2067,12 @@ export function registerRoutes(
   });
 
   app.get("/api/instances/:id/webhooks/:whId/deliveries", async (req, reply) => {
-    if (!webhookGate(reply)) return reply;
     const { id, whId } = whParams(req);
     getOr404(id);
     return webhooks.deliveries(id, whId);
   });
 
-  // ── 同機 Discord bot(agent 自跑並監督;贊助限定,共用 webhookGate)。enabled + token 存
+  // ── 同機 Discord bot(agent 自跑並監督)。enabled + token 存
   // <instanceDir>/discord-bot.json;token 寫入不回讀(status 只回 tokenSet),見 discord-bot-manager.ts。
   const discordBotInput = z.object({
     enabled: z.boolean().optional(),
@@ -2155,20 +2086,17 @@ export function registerRoutes(
   });
 
   app.get("/api/instances/:id/discord-bot", async (req, reply) => {
-    if (!webhookGate(reply)) return reply;
     const rec = getOr404((req.params as { id: string }).id);
     return discordBot.status(rec.id);
   });
 
   app.put("/api/instances/:id/discord-bot", async (req, reply) => {
-    if (!webhookGate(reply)) return reply;
     const rec = getOr404((req.params as { id: string }).id);
     const patch = discordBotInput.parse(req.body);
     return discordBot.update(rec.id, patch);
   });
 
   app.get("/api/instances/:id/discord-bot/logs", async (req, reply) => {
-    if (!webhookGate(reply)) return reply;
     const rec = getOr404((req.params as { id: string }).id);
     return discordBot.logs(rec.id);
   });
@@ -2289,16 +2217,6 @@ export function registerRoutes(
           .optional(),
       })
       .parse(req.body);
-    // 「每天固定時間」單一時刻人人可用;「多個時刻」為贊助者功能。只擋
-    // 「新啟用多時刻」——閘門上線前就這樣用的既有設定不破壞。
-    const prev = supervisor.readPolicy(rec.id);
-    const multi = (p: { scheduled: { enabled: boolean; mode: string; dailyTimes: string[] } }) =>
-      p.scheduled.enabled && p.scheduled.mode === "daily" && p.scheduled.dailyTimes.length > 1;
-    if (multi(policy) && !multi(prev) && !featureEnabled("daily-restart")) {
-      return reply
-        .code(403)
-        .send({ error: "每天「多個」固定時刻重啟為贊助者專屬功能(單一時刻免費),請在設定頁輸入贊助者識別碼解鎖。" });
-    }
     return supervisor.writePolicy(rec.id, policy);
   });
 

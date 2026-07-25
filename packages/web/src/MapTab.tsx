@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FiRefreshCw, FiMap, FiX, FiHome, FiUsers, FiStar, FiMoon, FiMapPin, FiExternalLink, FiZap, FiGlobe } from "react-icons/fi";
+import { FiRefreshCw, FiMap, FiX, FiHome, FiUsers, FiMoon, FiMapPin, FiExternalLink, FiZap, FiGlobe } from "react-icons/fi";
 import { GiCrownedSkull } from "react-icons/gi";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -189,14 +189,13 @@ export function MapTab({
   const [landmarks, setLandmarks] = useState<Landmark[]>([]);
   const [showBosses, setShowBosses] = useState(false);
   const [bosses, setBosses] = useState<Boss[]>([]);
-  // 頭目重生狀態(boss-respawn 模組回報;贊助者先行功能,無 feature/模組未安裝時
+  // 頭目重生狀態(boss-respawn 模組回報;模組未安裝時
   // client.bossRespawns 回 supported:false/state:null,疊加層自然不顯示)。
   const [bossRespawns, setBossRespawns] = useState<BossRespawnStatus | null>(null);
   // 世界樹的靜態圖層資料(worldtree-*.json;缺檔=舊資料包,圖層開關自動消失)
   const [treeLandmarks, setTreeLandmarks] = useState<Landmark[]>([]);
   const [treeBosses, setTreeBosses] = useState<Boss[]>([]);
-  const [guildHint, setGuildHint] = useState(false);
-  // 快速傳送全開(贊助者):寫入所有玩家存檔;需伺服器停止,agent 會先整世界備份
+  // 快速傳送全開:寫入所有玩家存檔;需伺服器停止,agent 會先整世界備份
   const [unlocking, setUnlocking] = useState(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
   const unlockFastTravel = async () => {
@@ -256,8 +255,7 @@ export function MapTab({
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-    // 公會據點與公會名稱人人可見;detailed=false(非贊助者)只是拿不到成員詳情,
-    // 點擊據點走存檔版公會彈窗(guildsUnlocked 控制走 REST 詳情或存檔版)。
+    // 點擊據點時,detailed 決定走 REST 詳情或存檔版 fallback。
     client
       .guilds(instanceId)
       .then((g) => {
@@ -270,7 +268,7 @@ export function MapTab({
       .palDefenderPlayers(instanceId)
       .then((r) => setPdPlayers(r.available ? r.players : []))
       .catch(() => setPdPlayers([]));
-    // 頭目重生狀態:跟現有 5s poll 走,不加額外 tick;無資料/未授權時 catch 回 null,
+    // 頭目重生狀態:跟現有 5s poll 走,不加額外 tick;無資料時 catch 回 null,
     // 疊加層自然不顯示。
     client
       .bossRespawns(instanceId)
@@ -347,44 +345,22 @@ export function MapTab({
           >
             <FiHome className="size-4" /> {t("公會據點")}
           </button>
-          {curLandmarks.length > 0 &&
-            (guildsUnlocked ? (
-              <button
-                className={`${btnGhost} inline-flex items-center gap-1.5 ${showLandmarks ? "border-pal text-pal" : "opacity-60"}`}
-                onClick={() => setShowLandmarks((v) => !v)}
-              >
-                <FiMapPin className="size-4" /> {t("地標")}
-                <FiStar className="size-3.5 text-pal" />
-              </button>
-            ) : (
-              <button
-                className={`${btnGhost} inline-flex items-center gap-1.5 opacity-70`}
-                title={t("此功能為贊助者專屬功能,可在設定頁輸入贊助者識別碼解鎖。")}
-                onClick={() => setGuildHint((v) => !v)}
-              >
-                <FiMapPin className="size-4" /> {t("地標")}
-                <FiStar className="size-3.5 text-pal" />
-              </button>
-            ))}
-          {curBosses.length > 0 &&
-            (guildsUnlocked ? (
-              <button
-                className={`${btnGhost} inline-flex items-center gap-1.5 ${showBosses ? "border-pal text-pal" : "opacity-60"}`}
-                onClick={() => setShowBosses((v) => !v)}
-              >
-                <GiCrownedSkull className="size-4" /> {t("頭目")}
-                <FiStar className="size-3.5 text-pal" />
-              </button>
-            ) : (
-              <button
-                className={`${btnGhost} inline-flex items-center gap-1.5 opacity-70`}
-                title={t("此功能為贊助者專屬功能,可在設定頁輸入贊助者識別碼解鎖。")}
-                onClick={() => setGuildHint((v) => !v)}
-              >
-                <GiCrownedSkull className="size-4" /> {t("頭目")}
-                <FiStar className="size-3.5 text-pal" />
-              </button>
-            ))}
+          {curLandmarks.length > 0 && (
+            <button
+              className={`${btnGhost} inline-flex items-center gap-1.5 ${showLandmarks ? "border-pal text-pal" : "opacity-60"}`}
+              onClick={() => setShowLandmarks((v) => !v)}
+            >
+              <FiMapPin className="size-4" /> {t("地標")}
+            </button>
+          )}
+          {curBosses.length > 0 && (
+            <button
+              className={`${btnGhost} inline-flex items-center gap-1.5 ${showBosses ? "border-pal text-pal" : "opacity-60"}`}
+              onClick={() => setShowBosses((v) => !v)}
+            >
+              <GiCrownedSkull className="size-4" /> {t("頭目")}
+            </button>
+          )}
         </div>
         <div className="flex gap-2">
           {!fullscreen && (
@@ -409,11 +385,6 @@ export function MapTab({
           )}
         </div>
       </div>
-      {guildHint && !guildsUnlocked && (
-        <p className="rounded-xl bg-sun/15 px-3 py-2 text-[13px] font-bold text-sun">
-          {t("此功能為贊助者專屬功能,可在設定頁輸入贊助者識別碼解鎖。")}
-        </p>
-      )}
       <div className="min-h-0 flex-1 overflow-hidden rounded-xl">
         <PlayerMap
           world={world}
@@ -573,7 +544,7 @@ export function MapTab({
           <p className="mt-0.5 text-[13px] text-ink-muted">{summary}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {SHOW_FAST_TRAVEL_UNLOCK && (guildsUnlocked ? (
+          {SHOW_FAST_TRAVEL_UNLOCK && (
             <button
               className={`${btnGhost} inline-flex items-center gap-1.5`}
               onClick={() => void unlockFastTravel()}
@@ -581,24 +552,13 @@ export function MapTab({
               title={t("把全部快速傳送點解鎖給所有玩家(寫入玩家存檔;需伺服器停止,會先自動備份)")}
             >
               <FiZap className="size-4" /> {unlocking ? t("解鎖中…") : t("快速傳送全開")}
-              <FiStar className="size-3.5 text-pal" />
             </button>
-          ) : (
-            <button
-              className={`${btnGhost} inline-flex items-center gap-1.5 opacity-70`}
-              title={t("此功能為贊助者專屬功能,可在設定頁輸入贊助者識別碼解鎖。")}
-              onClick={() => setUnlockMsg(t("此功能為贊助者專屬功能,可在設定頁輸入贊助者識別碼解鎖。"))}
-            >
-              <FiZap className="size-4" /> {t("快速傳送全開")}
-              <FiStar className="size-3.5 text-pal" />
-            </button>
-          ))}
+          )}
           <button
             className={`${btnGhost} inline-flex items-center gap-1.5`}
             onClick={() => setShowPublicMap(true)}
           >
             <FiGlobe className="size-4" /> {t("公開地圖")}
-            <FiStar className="size-3.5 text-pal" />
           </button>
           <button
             className={`${btn} inline-flex items-center gap-1.5`}
@@ -1125,8 +1085,8 @@ function PlayerMap({
     }
 
     // Guild bases first (under players). world_pos → savToMap, same frame.
-    // The whole guild feature is sponsor-only, so if we have any guild data the
-    // viewer is a sponsor — bases are always coloured, named, and clickable.
+    // Guild details are available whenever guild data is present, so bases
+    // are always coloured, named, and clickable.
     // Marker = the in-game Palbox art on a guild-coloured ring.
     if (showBases) {
       for (const g of guilds) {

@@ -1,11 +1,4 @@
-/**
- * 贊助者專屬功能目錄與授權判斷(agent 與 web 共用)。
- *
- * 模式:功能就在公開程式碼裡,但需要「有效的贊助識別碼」才會解鎖 —— 永久贊助者
- * 專屬,沒有免費期限;不在目錄裡的功能一律免費。(2026-07 起取消原本的
- * 「到期後對所有人開放」機制。)
- * 因為是開源自架,識別碼檢查跑在使用者機器上,無法硬性防繞過,定位是支持者專屬體驗。
- */
+/** 曾受贊助授權控制的功能目錄。保留 ID 供舊版 LicenseStatus 相容顯示。 */
 
 export interface EarlyAccessFeature {
   id: string;
@@ -31,11 +24,6 @@ export const EARLY_ACCESS_FEATURES: EarlyAccessFeature[] = [
   { id: "webhooks", label: "Webhook / Discord 機器人整合(伺服器事件推送 + 遠端指令)" },
 ];
 
-/** 這個功能是否對所有人免費 —— 只有「不在目錄裡」的功能免費;目錄內為贊助者專屬,無期限。 */
-export function featureFreeNow(id: string): boolean {
-  return !EARLY_ACCESS_FEATURES.some((x) => x.id === id);
-}
-
 /** agent 回報給前端的授權狀態。 */
 export interface LicenseStatus {
   /** 使用者是否已填識別碼。 */
@@ -43,7 +31,7 @@ export interface LicenseStatus {
   /** 識別碼目前是否有效(含離線寬限期內)。 */
   valid: boolean;
   tier: string | null;
-  /** 這張識別碼解鎖的早鳥功能 id。 */
+  /** 相容欄位:目前版本可使用的功能 id。 */
   features: string[];
   /** 到期日(ISO)或 null=永久。 */
   expiresAt: string | null;
@@ -53,15 +41,4 @@ export interface LicenseStatus {
   machineId: string;
   /** 上次向伺服器驗證的時間(ISO);離線時前端可提示。 */
   checkedAt: string | null;
-}
-
-/**
- * 統一的功能可用性判斷:免費功能 OR 有有效贊助授權。
- *
- * 目前只有單一贊助層級,識別碼的 `features` 清單僅供顯示 —— 有效贊助者一律解鎖
- * 全部贊助者功能(這樣新增功能不必重發碼 / 改 worker)。若日後要做分層,再把
- * `lic.features.includes(id)` 的判斷加回來即可。
- */
-export function hasFeature(id: string, lic: Pick<LicenseStatus, "valid" | "features">): boolean {
-  return featureFreeNow(id) || lic.valid;
 }

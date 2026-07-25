@@ -14,7 +14,6 @@ import {
   type WebhookEventType,
 } from "@palserver/shared";
 import { onAgentEvent, type AgentEvent } from "./events.js";
-import { featureEnabled } from "./license.js";
 import type { InstanceStore } from "./store.js";
 
 /** 磁碟形狀 —— settings 是前端可見部分,token 只在 agent 端,絕不回前端(見 status())。 */
@@ -102,8 +101,6 @@ export class DiscordBotManager {
     private store: InstanceStore,
     /** bot 子行程回控用的 agent base URL(loopback,含 scheme+port)。 */
     private agentLoopbackUrl: string,
-    /** 授權判斷注入點(測試用);預設走 license 模組,與 webhook 同一個閘門。 */
-    private featureEnabledFn: () => boolean = () => featureEnabled("webhooks"),
   ) {}
 
   // ── 持久化(仿 public-map) ──────────────────────────────────────────────
@@ -229,11 +226,11 @@ export class DiscordBotManager {
     for (const id of [...this.runtimes.keys()]) this.stopBot(id);
   }
 
-  /** 讓實際執行狀態趨近設定:enabled + 有 token + 已授權 → 該跑;否則 → 該停;
+  /** 讓實際執行狀態趨近設定:enabled + 有 token → 該跑;否則 → 該停;
    *  已在跑但 token/admin 變了 → 殺舊起新(換 env)。notify 設定是 live,不需重啟。 */
   private reconcile(id: string): void {
     const state = this.readState(id);
-    const shouldRun = state.settings.enabled && !!state.token && this.featureEnabledFn();
+    const shouldRun = state.settings.enabled && !!state.token;
     const r = this.rt(id);
     if (!shouldRun) {
       if (this.isAlive(r) || r.restartTimer) this.stopBot(id);
@@ -387,11 +384,10 @@ export class DiscordBotManager {
     }
   }
 
-  /** 背景追蹤器的 wants(id):bot 已授權、已啟用,且有任一條「設了頻道」的路由訂閱到對應事件。
+  /** 背景追蹤器的 wants(id):bot 已啟用,且有任一條「設了頻道」的路由訂閱到對應事件。
    *  與 forwardEvent 投遞條件對齊(不納入「子行程需在線」的 live 狀態,避免 bot 重啟時追蹤器抖動)。
    *  沒有這個,只設 bot、未設對應 webhook 時 chat/boss 追蹤器不會啟動 → bot 永遠收不到 chat/boss。 */
   private wantsAny(id: string, types: WebhookEventType[]): boolean {
-    if (!this.featureEnabledFn()) return false;
     const { settings } = this.readState(id);
     if (!settings.enabled) return false;
     return settings.notifyRoutes.some(

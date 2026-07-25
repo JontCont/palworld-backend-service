@@ -30,8 +30,7 @@ http://<agent 主機>:8250
   「Agent 本身」表格)。
 - **狀態碼語意**:
   - `401` —— token 缺失或錯誤。
-  - `403` —— 該功能屬贊助者先行版,此 agent 尚未用贊助者識別碼解鎖(本文表格中標「(贊助限定)」
-    的端點皆可能回 403;請把 403 當「功能未解鎖」處理,不要重試)。
+  - `403` —— 已通過 token 驗證,但請求不符合端點的授權或安全條件。
   - `404` —— 找不到指定的 instance / 資源。
   - `409` —— 狀態衝突(例如伺服器正在執行中,無法做需要停止才能做的操作)。回應通常帶
     `{ error: "中文說明" }`,可直接顯示給使用者。
@@ -60,7 +59,7 @@ HTTP 狀態碼。
 ## 端點總覽
 
 以下依功能域分組,組內按路徑排序。除非特別註明,`:id` 皆為 instance id(來自
-`GET /api/instances` 的 `id` 欄位)。標「(贊助限定)」的端點在未解鎖贊助者先行版時回 403。
+`GET /api/instances` 的 `id` 欄位)。
 
 ### 1. Agent 本身
 
@@ -71,9 +70,9 @@ HTTP 狀態碼。
 | `GET /api/addresses` | — | `{ addresses: { ip, vpn }[] }` | 本機可連 IPv4 位址,標出 Tailscale/Radmin/Hamachi |
 | `POST /api/import-save/inspect` | `{ sourcePath }` | `{ worlds: ExternalWorldCandidate[] }`(型別見 `@palserver/shared`) | 掃描外部路徑找可匯入的世界 |
 | `GET /api/info` | — | 型別 `AgentInfo`(name/version/dockerVersion/instanceCount/authenticated/platform/availableBackends) | 公開端點,免認證也能打,但會一併回報這次請求的授權狀態 |
-| `DELETE /api/license` | — | 清除贊助者識別碼後的狀態 | |
-| `GET /api/license` | — | 目前贊助者授權狀態 | |
-| `PUT /api/license` | `{ code }` | 設定後的授權狀態 | 贊助者識別碼(先行版授權),一碼綁一台 |
+| `DELETE /api/license` | — | 清除舊版識別碼後的相容狀態 | 相容舊版 client;不影響功能存取 |
+| `GET /api/license` | — | 舊版授權 metadata | 相容舊版 client;不影響功能存取 |
+| `PUT /api/license` | `{ code }` | 設定後的相容狀態 | 相容舊版 client;不影響功能存取 |
 | `GET /api/mods/latest` | — | 各模組元件(UE4SS/PalDefender 等)最新穩定版 | agent 端 6 小時快取 |
 | `POST /api/pair` | `{ code }` | `{ token }` | 用配對碼換發長 token;此端點本身免 token(靠配對碼保護) |
 | `GET /api/pair/code` | — | `{ pairingCode }` | 需已授權;查目前配對碼,產生「邀請連線」連結用 |
@@ -81,7 +80,7 @@ HTTP 狀態碼。
 | `POST /api/restart` | — | `{ restarting: boolean }` | 重啟 agent 自己(僅免安裝執行檔會真的重啟;開發模式回 `false`) |
 | `GET /api/settings` | — | 系統/網路設定,每欄帶 `{ value, envLocked }` | `envLocked=true` 表示被環境變數鎖定,面板應顯示為灰化 |
 | `PUT /api/settings` | `{ requireToken?, tls?, agentPort?, agentHost?, webOrigins?, autoOpenBrowser?, bootStart? }` | 更新後設定 | 寫入 data-dir/settings.json,多數欄位需重啟 agent 生效 |
-| `GET /api/system-review` | — (贊助限定 `dashboard-stats`) | 主機硬體+網路實測與健檢評分 | |
+| `GET /api/system-review` | — | 主機硬體+網路實測與健檢評分 | |
 | `GET /api/telemetry` | — | 匿名遙測開關狀態 | `envDisabled=true` 表示被 `PALSERVER_TELEMETRY=0` 強制停用 |
 | `PUT /api/telemetry` | `{ enabled }` | 更新後狀態 | |
 | `POST /api/translate` | `{ q: string[], tl: string }` | 譯文陣列(對應輸入順序) | 日誌翻譯用;結果記憶體快取,同句不重複呼叫 Google |
@@ -126,8 +125,8 @@ HTTP 狀態碼。
 
 | 端點 | body / query 摘要 | 回傳摘要 | 備註 |
 |---|---|---|---|
-| `GET /api/instances/:id/guilds` | — | 型別 `PdGuildList`(`detailed` 標示是否含公會細節) | 需 PalDefender REST；`detailed` 需贊助授權，未授權時 name/level/members 會被清空 |
-| `GET /api/instances/:id/guilds/:guildId` | — (贊助限定 `guild-map`) | 型別 `PdGuildDetail`(含 members/camps) | |
+| `GET /api/instances/:id/guilds` | — | 型別 `PdGuildList`(`detailed` 標示是否含公會細節) | 需 PalDefender REST；目前回傳完整公會細節 |
+| `GET /api/instances/:id/guilds/:guildId` | — | 型別 `PdGuildDetail`(含 members/camps) | |
 | `GET /api/instances/:id/live` | — | 型別 `LiveStatus`(available/info/metrics/players) | 需遊戲 REST API 已啟用（GUI 世界設定），否則 `available:false` |
 | `GET /api/instances/:id/paldefender-players` | — | 型別 `PdPlayerList`(含離線玩家) | |
 | `GET /api/instances/:id/paldefender-rest` | — | 型別 `PdRestStatus`(installed/configExists/enabled/hasToken/port) | |
@@ -143,14 +142,14 @@ HTTP 狀態碼。
 | 端點 | body / query 摘要 | 回傳摘要 | 備註 |
 |---|---|---|---|
 | `POST /api/instances/:id/announce` | `{ message }` | `{ announced: message }` | 遊戲內廣播 |
-| `POST /api/instances/:id/items/give` | `{ userId, items: { itemId, amount }[] }`(items 最多 50 筆,`amount` 1–99999) | `{ output }`(RCON 原始輸出) | (贊助限定 `bulk-items`)僅 Windows；需已安裝 PalDefender；走 RCON `giveitems` |
+| `POST /api/instances/:id/items/give` | `{ userId, items: { itemId, amount }[] }`(items 最多 50 筆,`amount` 1–99999) | `{ output }`(RCON 原始輸出) | 僅 Windows；需已安裝 PalDefender；走 RCON `giveitems` |
 | `GET /api/instances/:id/moderation` | — | 型別 `ModerationLists`(whitelistEnabled/whitelist/bans) | 讀自 PalDefender 的 JSON 檔，伺服器關閉時也能看 |
 | `POST /api/instances/:id/moderation/:action` | `:action` ∈ `whitelist_add`/`whitelist_remove`/`ban`/`unban`/`banip`/`unbanip`；body `{ value, reason? }` | 操作結果 | |
-| `POST /api/instances/:id/pals/give` | 型別 `CustomPalInput`(mode: pal/egg、userId、palId、nickname?、gender?、level?、activeSkills?、passives?、ivs?、condensedPals?、souls?、partnerSkillLevel?，見 `@palserver/shared`) | 給予結果 | (贊助限定 `custom-pal`)僅 Windows；需已安裝 PalDefender；走 PalTemplate + RCON `givepal_j` |
+| `POST /api/instances/:id/pals/give` | 型別 `CustomPalInput`(mode: pal/egg、userId、palId、nickname?、gender?、level?、activeSkills?、passives?、ivs?、condensedPals?、souls?、partnerSkillLevel?，見 `@palserver/shared`) | 給予結果 | 僅 Windows；需已安裝 PalDefender；走 PalTemplate + RCON `givepal_j` |
 | `POST /api/instances/:id/players/:userId/ban` | `{ message? }` | `{ banned: userId }` | |
 | `POST /api/instances/:id/players/:userId/kick` | `{ message? }` | `{ kicked: userId }` | |
 | `POST /api/instances/:id/players/:userId/unban` | — | `{ unbanned: userId }` | |
-| `POST /api/instances/:id/teleport` | `{ source, target }`(`source` = 玩家識別字串;`target` = 玩家 UserId 或座標「x y [z]」) | `{ output }`(RCON 原始輸出) | (贊助限定 `teleport`)僅 Windows；需已安裝 PalDefender;走 RCON `tp` 指令 |
+| `POST /api/instances/:id/teleport` | `{ source, target }`(`source` = 玩家識別字串;`target` = 玩家 UserId 或座標「x y [z]」) | `{ output }`(RCON 原始輸出) | 僅 Windows；需已安裝 PalDefender;走 RCON `tp` 指令 |
 
 ### 6. RCON
 
@@ -164,8 +163,8 @@ HTTP 狀態碼。
 | 端點 | body / query 摘要 | 回傳摘要 | 備註 |
 |---|---|---|---|
 | `GET /api/instances/:id/boss-respawns` | — | 頭目回報模組狀態(`supported`/`modInstalled`/`state`) | 倒數計算函式 `bossRespawnInfo` 見 `@palserver/shared` |
-| `POST /api/instances/:id/boss-respawns/install` | — (贊助限定 `boss-respawn`) | `{ installed: "boss-reporter", version, applied }` | 純伺服器端 UE4SS Lua 模組；執行中會回 409 |
-| `POST /api/instances/:id/boss-respawns/uninstall` | — (贊助限定 `boss-respawn`) | `{ removed: "boss-reporter" }` | |
+| `POST /api/instances/:id/boss-respawns/install` | — | `{ installed: "boss-reporter", version, applied }` | 純伺服器端 UE4SS Lua 模組；執行中會回 409 |
+| `POST /api/instances/:id/boss-respawns/uninstall` | — | `{ removed: "boss-reporter" }` | |
 | `GET /api/instances/:id/mods` | — | 型別 `ModsStatus`(ue4ss/paldefender/luaMods/pakMods) | |
 | `POST /api/instances/:id/mods/:component/enabled` | `:component` ∈ `ue4ss`/`paldefender`；body `{ enabled }` | 更新後 `ModsStatus` | 暫時停用/啟用（改名主 DLL,不刪檔）；native 執行中回 409 |
 | `POST /api/instances/:id/mods/:component/install` | `:component` ∈ `ue4ss`/`paldefender`；body `{ channel? }`(stable/beta) | 安裝結果 | native 執行中需先停止；docker/k8s 需容器在跑 |
@@ -176,11 +175,11 @@ HTTP 狀態碼。
 | `POST /api/instances/:id/pak-mods/toggle` | `{ name, enabled }` | `{ toggled: name, enabled }` | |
 | `DELETE /api/instances/:id/pal-stats` | — | 清空結果 | 清空所有物種數值調整;刻意不做贊助 gate（贊助到期也能改回原設定） |
 | `GET /api/instances/:id/pal-stats` | — | 物種數值調整表 | |
-| `PUT /api/instances/:id/pal-stats` | `{ row, values }`(`row` = 物種 ID,`values` 動態產生自 `PAL_STAT_OPTIONS`,見 `routes.ts:1714`) | 更新後結果 | (贊助限定 `pal-stats`) |
+| `PUT /api/instances/:id/pal-stats` | `{ row, values }`(`row` = 物種 ID,`values` 動態產生自 `PAL_STAT_OPTIONS`,見 `routes.ts:1714`) | 更新後結果 | |
 | `GET /api/instances/:id/palschema` | — | PalSchema 安裝狀態 | 物種數值編輯器底層引擎 |
 | `POST /api/instances/:id/palschema/enabled` | `{ enabled }` | 更新後狀態 | 暫時停用/啟用（整個資料夾搬出/搬回 Mods/,不刪檔） |
-| `POST /api/instances/:id/palschema/install` | — (贊助限定 `pal-stats`) | `{ installed: "palschema", version, applied }` | 執行中回 409(DLL 被鎖) |
-| `POST /api/instances/:id/palschema/uninstall` | — (贊助限定 `pal-stats`) | `{ removed: "palschema" }` | |
+| `POST /api/instances/:id/palschema/install` | — | `{ installed: "palschema", version, applied }` | 執行中回 409(DLL 被鎖) |
+| `POST /api/instances/:id/palschema/uninstall` | — | `{ removed: "palschema" }` | |
 
 ### 8. 世界與引擎設定
 
@@ -218,7 +217,7 @@ Base path 皆為實例的伺服器根目錄(native)或 Pod 內 `/palworld` 根�
 | 端點 | body / query 摘要 | 回傳摘要 | 備註 |
 |---|---|---|---|
 | `POST /api/instances/:id/save` | — | `{ saved: true }` | 立即存世界檔(透過遊戲 REST API) |
-| `POST /api/instances/:id/save-unlocks/fast-travel` | — (贊助限定 `map-unlocks`) | 解鎖結果 | 全體玩家快速傳送全開;需伺服器停止(運行中寫入會損壞存檔) |
+| `POST /api/instances/:id/save-unlocks/fast-travel` | — | 解鎖結果 | 全體玩家快速傳送全開;需伺服器停止(運行中寫入會損壞存檔) |
 | `GET /api/instances/:id/saves` | — | 型別 `SavesStatus` + `schedule`(`BackupSchedule`) | 世界清單、備份清單、排程 |
 | `POST /api/instances/:id/saves/active` | `{ worldGuid }` | `{ active: worldGuid, applied: "on-next-start" }` | 切換啟用中的世界;native 需先停止,k8s 需伺服器運行中(要能 exec 進 Pod) |
 | `PUT /api/instances/:id/saves/auto-scan` | `{ enabled, intervalMinutes? }` | 更新後設定 | 每小時自動掃描開關(排行榜分頁用) |
@@ -252,14 +251,13 @@ Base path 皆為實例的伺服器根目錄(native)或 Pod 內 `/palworld` 根�
 
 | 端點 | body / query 摘要 | 回傳摘要 | 備註 |
 |---|---|---|---|
-| `GET /api/instances/:id/public-map` | — | 型別 `PublicMapStatus`(settings/shareUrl/lastPublish) | 查看/關閉永遠放行,不受贊助授權過期影響 |
-| `PUT /api/instances/:id/public-map` | `{ settings: Partial<PublicMapSettings> }` | 更新後 `PublicMapStatus` | 只擋「從關閉切成開啟」這個轉換需贊助授權;已開啟時改子設定不受限(授權過期的服主仍能調整顯示內容) |
-| `POST /api/instances/:id/public-map/rotate` | — (贊助限定 `public-map`) | 換發後的分享連結 | 換一個新的 `shareId`,舊連結失效 |
+| `GET /api/instances/:id/public-map` | — | 型別 `PublicMapStatus`(settings/shareUrl/lastPublish) | 查看目前公開地圖設定與狀態 |
+| `PUT /api/instances/:id/public-map` | `{ settings: Partial<PublicMapSettings> }` | 更新後 `PublicMapStatus` | 啟用、停用或調整公開內容 |
+| `POST /api/instances/:id/public-map/rotate` | — | 換發後的分享連結 | 換一個新的 `shareId`,舊連結失效 |
 
-### 13. Webhook(贊助限定)
+### 13. Webhook
 
-全組端點皆需 `featureEnabled("webhooks")`,未解鎖回 403。事件格式、簽章演算法、投遞語意見
-[webhooks.md](webhooks.md)。
+事件格式、簽章演算法、投遞語意見 [webhooks.md](webhooks.md)。
 
 | 端點 | body / query 摘要 | 回傳摘要 | 備註 |
 |---|---|---|---|
@@ -271,9 +269,9 @@ Base path 皆為實例的伺服器根目錄(native)或 Pod 內 `/palworld` 根�
 | `POST /api/instances/:id/webhooks/:whId/rotate-secret` | — | 換發後的新 secret(一次性顯示) | |
 | `POST /api/instances/:id/webhooks/:whId/test` | — | 測試投遞結果 | 送出 `webhook.ping` 事件 |
 
-### 14. Discord Bot(同機代管,贊助限定)
+### 14. Discord Bot(同機代管)
 
-同機由 agent 自跑並監督的 Discord bot 設定(與 webhook 共用贊助閘門);token 只寫入、不回讀。
+同機由 agent 自跑並監督的 Discord bot 設定;token 只寫入、不回讀。
 
 | 端點 | body / query 摘要 | 回傳摘要 | 備註 |
 |---|---|---|---|
@@ -305,9 +303,7 @@ token;跨機在 URL 加 `?token=<AGENT_TOKEN>` query 參數,例如
 
 - **新增欄位不算破壞**:回應物件未來可能新增欄位,請把消費端寫成「多的欄位容忍、缺的欄位給
   預設值」,不要假設欄位清單是封閉的。
-- **贊助閘門**:標「(贊助限定)」的端點在該 agent 沒有有效贊助者授權時回 `403`
-  `{ error: "…請在設定頁輸入贊助者識別碼解鎖。" }`。請把 403 當「功能未解鎖」處理,不要重試或
-  當成一般錯誤。
+- **舊版 license API**:`GET/PUT/DELETE /api/license` 為相容舊版 client 保留,回傳 metadata 不控制任何功能存取。
 - **狀態衝突(409)**:多數會修改伺服器檔案的端點(mods 安裝、設定檔重建、存檔還原等)在伺服器
   執行中(或某些 k8s 端點反過來要求運行中)會回 409,錯誤訊息是可直接顯示的中文說明。
 - **自律**:查詢類端點(`/live`、`/saves`、`/players/*` 等)請控制在每 5–15 秒一次的等級;

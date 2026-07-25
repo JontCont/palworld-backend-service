@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FiAward, FiDollarSign, FiHelpCircle, FiHome, FiRefreshCw, FiTrendingUp, FiUserPlus, FiUsers, FiZap } from "react-icons/fi";
 import type { AutoScanSetting, SaveScanStats, SaveScanGuildStat, SaveScanPlayerStat } from "@palserver/shared";
-import { guildScore, hasFeature, topPalScore } from "@palserver/shared";
+import { guildScore, topPalScore } from "@palserver/shared";
 import type { AgentClient } from "./api";
 import { displayName, palIconUrl, useGameData, type GameData } from "./gameData";
 import { t, useI18n } from "./i18n";
-import { SponsorLockNotice, EmptyState, btnGhost, card, errorCls } from "./ui";
+import { EmptyState, btnGhost, card, errorCls } from "./ui";
 
 /**
  * 排行榜分頁 — 存檔掃描統計歷史(save-stats-history)驅動。
@@ -18,18 +18,10 @@ export function LeaderboardTab({ client, instanceId }: { client: AgentClient; in
   const [worldGuid, setWorldGuid] = useState<string | null>(null);
   const [history, setHistory] = useState<SaveScanStats[] | null>(null);
   const [autoScan, setAutoScan] = useState<AutoScanSetting | null>(null);
-  const [entitled, setEntitled] = useState<boolean | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [canScan, setCanScan] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    client
-      .license()
-      .then((l) => setEntitled(hasFeature("leaderboard", l)))
-      .catch(() => setEntitled(false));
-  }, [client]);
 
   const load = useCallback(async () => {
     try {
@@ -85,12 +77,10 @@ export function LeaderboardTab({ client, instanceId }: { client: AgentClient; in
 
   const latest = history && history.length > 0 ? history[history.length - 1] : null;
   const prev = history && history.length > 1 ? history[history.length - 2] : null;
-  const locked = entitled === false;
-
   return (
     <div className="flex flex-col gap-4">
       {/* 無法取得快照(note)且不能掃描時整列收起,虛線提示框與其他分頁一樣貼齊頂部 */}
-      {(latest || !note || (canScan && !locked)) && (
+      {(latest || !note || canScan) && (
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-ink-muted">
           {latest
@@ -99,7 +89,7 @@ export function LeaderboardTab({ client, instanceId }: { client: AgentClient; in
               ? "" // 無法取得快照時只顯示下方的提示框,不重複「尚未掃描」
               : t("尚未掃描過存檔。點「從存檔刷新」建立快照。")}
         </p>
-        {canScan && !locked && (
+        {canScan && (
           <div className="flex flex-wrap items-center gap-2">
             <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-bold text-ink-muted">
               <input
@@ -131,10 +121,9 @@ export function LeaderboardTab({ client, instanceId }: { client: AgentClient; in
       )}
 
       {error && <p className={errorCls}>{error}</p>}
-      {locked && <SponsorLockNotice />}
       {note && !scanning && <EmptyState icon={<FiAward />}>{note}</EmptyState>}
 
-      {!locked && latest && (
+      {latest && (
         <>
           {history && history.length > 1 ? (
             <ServerDigest history={history} />
@@ -205,7 +194,7 @@ export function LeaderboardTab({ client, instanceId }: { client: AgentClient; in
         </>
       )}
 
-      {!locked && history && history.length === 0 && (
+      {history && history.length === 0 && (
         <EmptyState icon={<FiAward />}>
           {t("還沒有排行榜資料。掃描一次存檔就會出現(掃描也會更新健檢與玩家/公會快照)。")}
         </EmptyState>

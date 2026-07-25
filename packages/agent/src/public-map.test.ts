@@ -105,8 +105,8 @@ test("assemblePublicMapSnapshot:匿名化代號在快照裡穩定(不受玩家�
   const bob = { userId: "b-user", name: "Bob", level: 5, savX: 100, savY: 100 };
   const s = settings({ showPlayers: true, showPlayerNames: false });
 
-  const snap1 = assemblePublicMapSnapshot(baseInput({ online: [bob, alice] }), s, false);
-  const snap2 = assemblePublicMapSnapshot(baseInput({ online: [alice, bob] }), s, false);
+  const snap1 = assemblePublicMapSnapshot(baseInput({ online: [bob, alice] }), s);
+  const snap2 = assemblePublicMapSnapshot(baseInput({ online: [alice, bob] }), s);
 
   // snap1: 陣列順序是 [bob, alice] → 輸出保留相同順序,但代號按 uid 排序決定
   assert.equal(snap1.players?.[0]?.n, "Player 2"); // bob = b-user
@@ -125,7 +125,6 @@ test("assemblePublicMapSnapshot:隱藏名稱時不送 icon(穩定頭像會反匿
   const anon = assemblePublicMapSnapshot(
     baseInput({ online: [p], offline: [off] }),
     settings({ showPlayers: true, showPlayerNames: false, showOfflinePlayers: true }),
-    false,
   );
   assert.equal(anon.players?.[0]?.n, "Player 1");
   assert.equal("icon" in (anon.players?.[0] ?? {}), false, "匿名時線上玩家不該帶 icon");
@@ -135,7 +134,6 @@ test("assemblePublicMapSnapshot:隱藏名稱時不送 icon(穩定頭像會反匿
   const named = assemblePublicMapSnapshot(
     baseInput({ online: [p], offline: [off] }),
     settings({ showPlayers: true, showPlayerNames: true, showOfflinePlayers: true }),
-    false,
   );
   assert.equal(named.players?.[0]?.n, "Alice");
   assert.ok(
@@ -152,7 +150,7 @@ test("assemblePublicMapSnapshot:關掉 showBases 後 bases 欄位整個省略(�
   const input = baseInput({
     bases: [{ worldX: 1000, worldY: -2000, guildName: "公會A" }],
   });
-  const snap = assemblePublicMapSnapshot(input, settings({ showBases: false }), true);
+  const snap = assemblePublicMapSnapshot(input, settings({ showBases: false }));
   assert.equal(snap.bases, undefined);
   assert.equal("bases" in snap, false);
   // 序列化後最外層也真的沒有 bases 這個 key(前端/Worker 依此判斷圖層關閉);
@@ -160,25 +158,22 @@ test("assemblePublicMapSnapshot:關掉 showBases 後 bases 欄位整個省略(�
   assert.equal(Object.keys(snap).includes("bases"), false);
 });
 
-test("assemblePublicMapSnapshot:showGuildNames 開啟但 guild-map 未解鎖時,公會名一律省略", () => {
+test("assemblePublicMapSnapshot:showGuildNames 控制公會名稱是否公開", () => {
   const input = baseInput({
     bases: [
       { worldX: 1000, worldY: -2000, guildName: "公會A" },
       { worldX: -500, worldY: 3000, guildName: "公會B" },
     ],
   });
-  const s = settings({ showBases: true, showGuildNames: true });
+  const hidden = assemblePublicMapSnapshot(input, settings({ showBases: true, showGuildNames: false }));
+  assert.equal(hidden.show.guildNames, false);
+  assert.ok(hidden.bases && hidden.bases.length === 2);
+  for (const base of hidden.bases ?? []) assert.equal("g" in base, false);
 
-  const locked = assemblePublicMapSnapshot(input, s, /* guildNamesUnlocked */ false);
-  assert.equal(locked.show.guildNames, false);
-  assert.ok(locked.bases && locked.bases.length === 2);
-  for (const b of locked.bases ?? []) assert.equal("g" in b, false);
-
-  // 對照組:解鎖時應該看得到公會名 —— 確認過濾真的是被 guildNamesUnlocked 控制,而不是恆定省略。
-  const unlocked = assemblePublicMapSnapshot(input, s, true);
-  assert.equal(unlocked.show.guildNames, true);
+  const shown = assemblePublicMapSnapshot(input, settings({ showBases: true, showGuildNames: true }));
+  assert.equal(shown.show.guildNames, true);
   assert.deepEqual(
-    (unlocked.bases ?? []).map((b) => b.g),
+    (shown.bases ?? []).map((base) => base.g),
     ["公會A", "公會B"],
   );
 });
@@ -186,7 +181,7 @@ test("assemblePublicMapSnapshot:showGuildNames 開啟但 guild-map 未解鎖時,
 test("assemblePublicMapSnapshot:showBossRespawns 開啟且 input.bosses 有料時,快照帶 show.bossRespawns:true 與 bosses 陣列", () => {
   const bossPoints: PublicMapBossPoint[] = [{ x: -553, y: -1332, m: "world", st: "dead", ra: 12345, ms: true }];
   const input = baseInput({ bosses: bossPoints });
-  const snap = assemblePublicMapSnapshot(input, settings({ showBossRespawns: true }), true);
+  const snap = assemblePublicMapSnapshot(input, settings({ showBossRespawns: true }));
   assert.equal(snap.show.bossRespawns, true);
   assert.deepEqual(snap.bosses, bossPoints);
 });
@@ -194,7 +189,7 @@ test("assemblePublicMapSnapshot:showBossRespawns 開啟且 input.bosses 有料�
 test("assemblePublicMapSnapshot:showBossRespawns 關閉時,即使呼叫端帶了 input.bosses,快照也不含 bosses 欄位", () => {
   const bossPoints: PublicMapBossPoint[] = [{ x: -553, y: -1332, m: "world", st: "alive" }];
   const input = baseInput({ bosses: bossPoints });
-  const snap = assemblePublicMapSnapshot(input, settings({ showBossRespawns: false }), true);
+  const snap = assemblePublicMapSnapshot(input, settings({ showBossRespawns: false }));
   assert.equal(snap.show.bossRespawns, false);
   assert.equal(snap.bosses, undefined);
   assert.equal("bosses" in snap, false);
@@ -330,12 +325,12 @@ test("assemblePublicMapSnapshot:showBases 關閉時,即使呼叫端算了 raidin
     raidingUserIds: new Set(["alice"]),
   });
 
-  const withoutBases = assemblePublicMapSnapshot(input, settings({ showPlayers: true, showBases: false }), true);
+  const withoutBases = assemblePublicMapSnapshot(input, settings({ showPlayers: true, showBases: false }));
   assert.equal(withoutBases.players?.[0]?.warn, undefined);
   assert.equal("warn" in (withoutBases.players?.[0] ?? {}), false);
 
   // 對照組:showBases 也開啟時,同一份 raidingUserIds 才會真的反映到 warn 欄位。
-  const withBases = assemblePublicMapSnapshot(input, settings({ showPlayers: true, showBases: true }), true);
+  const withBases = assemblePublicMapSnapshot(input, settings({ showPlayers: true, showBases: true }));
   assert.equal(withBases.players?.[0]?.warn, true);
 });
 
@@ -346,7 +341,7 @@ test("assemblePublicMapSnapshot:bases 條目的 c 色碼來自 guildId,與 guild
       { worldX: 500, worldY: -1000 }, // 沒有 guildId(理論上不該發生,但要驗證不會硬湊一個色)
     ],
   });
-  const snap = assemblePublicMapSnapshot(input, settings({ showBases: true, showGuildNames: false }), true);
+  const snap = assemblePublicMapSnapshot(input, settings({ showBases: true, showGuildNames: false }));
   assert.ok(snap.bases && snap.bases.length === 2);
   assert.equal(typeof snap.bases![0].c, "string");
   assert.match(snap.bases![0].c!, /^hsl\(/);
@@ -363,7 +358,6 @@ test("mapPlayers(透過 assemblePublicMapSnapshot):顯示名稱時在線/離線�
   const snap = assemblePublicMapSnapshot(
     input,
     settings({ showPlayers: true, showOfflinePlayers: true, showPlayerNames: true }),
-    true,
   );
   assert.equal(typeof snap.players?.[0]?.icon, "string");
   assert.ok(snap.players![0].icon!.length > 0);
@@ -372,7 +366,7 @@ test("mapPlayers(透過 assemblePublicMapSnapshot):顯示名稱時在線/離線�
 
 test("pickDelayedSnapshot:取『至少 delayMinutes 分鐘前』組好、但最接近門檻的那份", () => {
   const now = 1_700_000_000_000;
-  const tag = (label: string) => assemblePublicMapSnapshot(baseInput({ serverName: label }), settings({}), true, now);
+  const tag = (label: string) => assemblePublicMapSnapshot(baseInput({ serverName: label }), settings({}), now);
   const buffer = [
     { at: now - 20 * 60_000, snapshot: tag("t-20") },
     { at: now - 14 * 60_000, snapshot: tag("t-14") },
@@ -390,7 +384,7 @@ test("pickDelayedSnapshot:取『至少 delayMinutes 分鐘前』組好、但最�
 
 test("pickDelayedSnapshot:delay 緩衝還沒攢夠(全部太新)回傳 null,不提早外洩位置", () => {
   const now = 1_700_000_000_000;
-  const snap = assemblePublicMapSnapshot(baseInput(), settings({}), true, now);
+  const snap = assemblePublicMapSnapshot(baseInput(), settings({}), now);
   const buffer = [
     { at: now - 2 * 60_000, snapshot: snap },
     { at: now, snapshot: snap },
@@ -406,7 +400,7 @@ test("resolvePublishTarget:delayMinutes>0 且緩衝空 → 回傳最小快照,�
   const now = 1_700_000_000_000;
   const alice = { userId: "a-user", name: "Alice", level: 9, savX: 0, savY: 0 };
   const s = settings({ showPlayers: true, showBases: true, delayMinutes: 15 });
-  const freshSnapshot = assemblePublicMapSnapshot(baseInput({ onlineCount: 1, online: [alice] }), s, true, now);
+  const freshSnapshot = assemblePublicMapSnapshot(baseInput({ onlineCount: 1, online: [alice] }), s, now);
   // 先確認「即時快照」本身真的帶著玩家位置 —— 這樣底下的斷言才有意義(不是恆真)。
   assert.ok(freshSnapshot.players && freshSnapshot.players.length === 1);
 
@@ -430,7 +424,7 @@ test("resolvePublishTarget:delayMinutes>0 且緩衝空 → 回傳最小快照,�
   assert.equal(immediate, freshSnapshot);
 
   // 對照組 2:緩衝裡已經有夠舊的版本時,優先用那份,不使用最小快照 fallback。
-  const old = assemblePublicMapSnapshot(baseInput({ serverName: "夠舊的版本" }), s, true, now - 20 * 60_000);
+  const old = assemblePublicMapSnapshot(baseInput({ serverName: "夠舊的版本" }), s, now - 20 * 60_000);
   const withBuffer = resolvePublishTarget([{ at: now - 20 * 60_000, snapshot: old }], s, freshSnapshot, now);
   assert.equal(withBuffer.name, "夠舊的版本");
 });
@@ -448,7 +442,7 @@ test("PublicMapPublisher:assemble 途中世代號被改變 → tick 放棄送出
   });
 
   const { driver, resolve } = makeDeferredDriver();
-  const publisher = new PublicMapPublisher(store, () => driver, fakePresence, dataDir, () => true);
+  const publisher = new PublicMapPublisher(store, () => driver, fakePresence, dataDir);
 
   let publishCalls = 0;
   const restoreFetch = stubFetch(async (input) => {
@@ -490,7 +484,7 @@ test("PublicMapPublisher:世代號沒變時 tick 照常送出(對照組)", async
     secret: "secret-gen-ok",
   });
 
-  const publisher = new PublicMapPublisher(store, () => stoppedDriver, fakePresence, dataDir, () => true);
+  const publisher = new PublicMapPublisher(store, () => stoppedDriver, fakePresence, dataDir);
   let publishCalls = 0;
   const restoreFetch = stubFetch(async (input) => {
     if (String(input).includes("/api/map/publish")) publishCalls++;
@@ -507,9 +501,7 @@ test("PublicMapPublisher:世代號沒變時 tick 照常送出(對照組)", async
   }
 });
 
-// ── 贊助者 gating(public-map):授權過期時背景 tick 自動跳過發布 ──
-
-test("PublicMapPublisher:featureEnabledFn 回傳 false(未授權)時 tick 不發布,設定原封不動(public-map gating)", async () => {
+test("PublicMapPublisher:沒有授權依賴時 tick 正常發布,設定原封不動", async () => {
   const instanceDir = tempDir("public-map-gate-");
   const dataDir = tempDir("public-map-gate-data-");
   const rec = makeRec("inst-gate");
@@ -520,8 +512,7 @@ test("PublicMapPublisher:featureEnabledFn 回傳 false(未授權)時 tick 不發
   };
   writeStateFile(instanceDir, initialState);
 
-  // 明確注入「未授權」,不依賴這台機器上真的沒有 license.json(那只是巧合成立的假設)。
-  const publisher = new PublicMapPublisher(store, () => stoppedDriver, fakePresence, dataDir, () => false);
+  const publisher = new PublicMapPublisher(store, () => stoppedDriver, fakePresence, dataDir);
   let publishCalls = 0;
   const restoreFetch = stubFetch(async (input) => {
     if (String(input).includes("/api/map/publish")) publishCalls++;
@@ -530,7 +521,7 @@ test("PublicMapPublisher:featureEnabledFn 回傳 false(未授權)時 tick 不發
 
   try {
     await (publisher as unknown as { tick: () => Promise<void> }).tick();
-    assert.equal(publishCalls, 0, "未授權時這輪不該送出任何 publish 請求");
+    assert.equal(publishCalls, 1, "啟用中的公開地圖應正常發布");
 
     // 設定檔本身不被動:enabled/shareId/secret 都原封不動(不清設定、不 unpublish)。
     const stateFile = path.join(instanceDir, "public-map.json");
@@ -545,7 +536,7 @@ test("PublicMapPublisher:featureEnabledFn 回傳 false(未授權)時 tick 不發
   }
 });
 
-test("PublicMapPublisher:未授權時 publishNow 也不發布(設定變更的即時發布不能繞過 gate)", async () => {
+test("PublicMapPublisher:publishNow 不依賴授權狀態", async () => {
   const instanceDir = tempDir("public-map-gate2-");
   const dataDir = tempDir("public-map-gate2-data-");
   const rec = makeRec("inst-gate2");
@@ -553,7 +544,7 @@ test("PublicMapPublisher:未授權時 publishNow 也不發布(設定變更的即
   const s = settings({ enabled: true, shareId: "share-gate2", delayMinutes: 0 });
   writeStateFile(instanceDir, { settings: s, secret: "secret-gate2" });
 
-  const publisher = new PublicMapPublisher(store, () => stoppedDriver, fakePresence, dataDir, () => false);
+  const publisher = new PublicMapPublisher(store, () => stoppedDriver, fakePresence, dataDir);
   let publishCalls = 0;
   const restoreFetch = stubFetch(async (input) => {
     if (String(input).includes("/api/map/publish")) publishCalls++;
@@ -566,7 +557,7 @@ test("PublicMapPublisher:未授權時 publishNow 也不發布(設定變更的即
         publishNow: (r: typeof rec, st: typeof s, sec: string) => Promise<void>;
       }
     ).publishNow(rec, s, "secret-gate2");
-    assert.equal(publishCalls, 0, "未授權時 publishNow 不該送出 publish 請求");
+    assert.equal(publishCalls, 1, "publishNow 應送出 publish 請求");
   } finally {
     restoreFetch();
     fs.rmSync(instanceDir, { recursive: true, force: true });

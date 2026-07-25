@@ -58,7 +58,7 @@ await api(`/api/instances/${instance.id}/announce`, {
   「Discord Bot」分頁(進階區)可直接複製;它等同 agent 的**完整控制權**,請妥善保管。
 - agent 開 TLS 時是**自簽憑證**:連 loopback 可跳過憑證驗證(官方 bot 的做法,見
   `agent.ts` 的 `loopbackHttpsFetch`);跨機建議直接走 Tailscale + HTTP。
-- 401 = token 錯;403 = 該功能屬贊助者先行版且此 agent 未解鎖。
+- 401 = token 錯;403 = 請求不符合端點的授權或安全條件。
 
 ## 取得實例
 

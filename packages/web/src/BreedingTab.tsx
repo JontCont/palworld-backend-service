@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiCrosshair, FiGitBranch, FiMapPin, FiMaximize2, FiRefreshCw, FiSearch, FiZoomIn, FiZoomOut } from "react-icons/fi";
 import { GiEggClutch } from "react-icons/gi";
-import { hasFeature, savToMap, type SaveBreedingPal } from "@palserver/shared";
+import { savToMap, type SaveBreedingPal } from "@palserver/shared";
 import type { AgentClient } from "./api";
 import { EntityPicker } from "./EntityPicker";
 import { MultiPicker } from "./MultiPicker";
 import { displayName, palIconUrl, useGameData, type GameData } from "./gameData";
 import { solveBreeding, type BreedingData, type BreedingNode } from "./breedingSolver";
 import { t, useI18n } from "./i18n";
-import { EmptyState, SponsorLockNotice, btn, btnGhost, card, errorCls, labelCls, Select } from "./ui";
+import { EmptyState, btn, btnGhost, card, errorCls, labelCls, Select } from "./ui";
 
 let recipesCache: BreedingData | null = null;
 async function loadBreedingData(): Promise<BreedingData> {
@@ -292,15 +292,8 @@ export function BreedingTab({ client, instanceId, onShowOnMap }: { client: Agent
   const [maxGenerations, setMaxGenerations] = useState(4);
   const [calculating, setCalculating] = useState(false);
   const [solution, setSolution] = useState<ReturnType<typeof solveBreeding> | null>(null);
-  const [entitled, setEntitled] = useState<boolean | null>(null);
   const scanTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    client
-      .license()
-      .then((l) => setEntitled(hasFeature("breeding-calc", l)))
-      .catch(() => setEntitled(false));
-  }, [client]);
   useEffect(
     () => () => {
       if (scanTimer.current) clearInterval(scanTimer.current);
@@ -408,8 +401,6 @@ export function BreedingTab({ client, instanceId, onShowOnMap }: { client: Agent
     }
   };
 
-  if (entitled === false)
-    return <SponsorLockNotice>{t("這是贊助者先行版功能。到「設定 → 贊助者識別碼」輸入識別碼即可使用。")}</SponsorLockNotice>;
   if (loading && !breedingData) return <p className="text-ink-muted">{t("載入中…")}</p>;
 
   return (

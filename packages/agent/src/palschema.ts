@@ -27,7 +27,7 @@ import {
 import { makeDirInPod, writeFileBytesInPod } from "./k8s-files.js";
 
 /**
- * PalSchema 整合(贊助者先行版 pal-stats):
+ * PalSchema 整合:
  *  - 一鍵安裝 PalSchema 及其相依的 UE4SS(Okaetsu 的 experimental-palworld 版,
  *    PalSchema 強制此版,標準 UE4SS 會崩潰),並設定 UE4SS-settings.ini / mods.txt。
  *  - 讀/寫我們自管的 PalSchema 子 mod,以 raw DataTable patch 改 DT_PalMonsterParameter

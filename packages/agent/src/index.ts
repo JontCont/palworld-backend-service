@@ -205,13 +205,13 @@ const publicMap = new PublicMapPublisher(
 );
 publicMap.start();
 
-// Webhook / Discord 機器人整合(贊助限定):dispatcher 訂閱事件匯流排,對已啟用的
+// Webhook / Discord 機器人整合:dispatcher 訂閱事件匯流排,對已啟用的
 // webhook 簽章推送 + 重試。log-event-tracker 只在「已授權且有訂閱 player.* log 事件」
 // 的執行中實例才起 follower(wantsLogEvents),避免無訂閱時空轉。
 const webhooks = new WebhooksService(store, AGENT_VERSION);
 webhooks.start();
 
-// 同機 Discord bot(贊助限定,gate 同 webhook):enabled + 有 token 的實例由 agent self-fork
+// 同機 Discord bot:enabled + 有 token 的實例由 agent self-fork
 // 一個 bot 子行程並監督(崩潰退避重啟)。bot 回控走 loopback,scheme/port 跟這台 agent。
 const discordBot = new DiscordBotManager(store, `${scheme}://127.0.0.1:${PORT}`);
 discordBot.start();
