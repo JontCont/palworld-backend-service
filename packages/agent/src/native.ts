@@ -416,7 +416,19 @@ function runDepotDownloader(
     );
     child.stdout.on("data", handle);
     child.stderr.on("data", handle);
-    child.on("error", reject);
+    child.on("error", (err) => {
+      // ENOENT/EACCES 通常是快取工具被清掉、權限壞掉或防毒攔截:
+      // 視為「啟動即崩潰」交給上層自我修復(刪快取後重抓再試)。
+      const e = err as NodeJS.ErrnoException;
+      if (e.code === "ENOENT" || e.code === "EACCES") {
+        return reject(
+          Object.assign(new Error(`DepotDownloader failed to start: ${e.code} (${dd})`), {
+            ddEarlyCrash: true,
+          }),
+        );
+      }
+      reject(err);
+    });
     child.on("exit", (code) => {
       if (code === 0) return resolve();
       if (sawDiskFull) return reject(diskFullError());

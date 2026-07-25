@@ -8,6 +8,7 @@ RUN pnpm install --frozen-lockfile && pnpm -r build
 
 FROM node:22-alpine
 RUN corepack enable
+RUN apk add --no-cache gcompat
 WORKDIR /app
 COPY --from=build /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml ./
 COPY --from=build /app/packages/shared/package.json packages/shared/
