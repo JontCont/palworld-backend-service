@@ -106,8 +106,12 @@ export async function getStatus(
 /** Write the ini into the bind-mounted config dir; picked up on next (re)start. */
 export function writeConfig(instanceDir: string, settings: WorldSettings): void {
   const configDir = path.join(instanceDir, "config");
+  const savedDir = path.join(instanceDir, "saved");
   fs.mkdirSync(configDir, { recursive: true });
-  fs.mkdirSync(path.join(instanceDir, "saved"), { recursive: true });
+  fs.mkdirSync(savedDir, { recursive: true });
+  // Runtime image runs as uid/gid 1000(palworld). Ensure bind-mounted saved dir
+  // stays writable even if the agent created it as root.
+  if (process.platform !== "win32") fs.chmodSync(savedDir, 0o777);
   fs.writeFileSync(
     path.join(configDir, "PalWorldSettings.ini"),
     renderPalWorldSettingsIni(settings),
