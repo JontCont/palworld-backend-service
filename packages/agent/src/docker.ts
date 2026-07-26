@@ -207,10 +207,15 @@ export async function createContainer(
     ports[`${rec.queryPort}/udp`] = {};
     bindings[`${rec.queryPort}/udp`] = [{ HostPort: String(rec.queryPort) }];
   }
-  if (rec.settings.RESTAPIEnabled) {
+  if (rec.settings.RESTAPIEnabled && rec.settings.RESTAPIPort) {
     const restPort = rec.settings.RESTAPIPort;
     ports[`${restPort}/tcp`] = {};
     bindings[`${restPort}/tcp`] = [{ HostPort: String(restPort) }];
+  }
+  if (rec.settings.RCONEnabled && rec.settings.RCONPort) {
+    const rconPort = rec.settings.RCONPort;
+    ports[`${rconPort}/tcp`] = {};
+    bindings[`${rconPort}/tcp`] = [{ HostPort: String(rconPort) }];
   }
 
   const launchArgs = [
@@ -283,7 +288,10 @@ export async function startInstance(rec: InstanceRecord, instanceDir: string): P
     const info = await container.inspect().catch(() => null);
     const bindings = info?.HostConfig?.PortBindings ?? {};
     const restPort = rec.settings.RESTAPIEnabled ? rec.settings.RESTAPIPort : undefined;
-    if (restPort && !bindings[`${restPort}/tcp`]) {
+    const rconPort = rec.settings.RCONEnabled ? rec.settings.RCONPort : undefined;
+    const missingRest = restPort && !bindings[`${restPort}/tcp`];
+    const missingRcon = rconPort && !bindings[`${rconPort}/tcp`];
+    if (missingRest || missingRcon) {
       await container.stop({ t: 10 }).catch(() => {});
       await container.remove({ force: true }).catch(() => {});
       container = null;

@@ -25,11 +25,14 @@ class RestError extends Error {
 /** docker/native: REST API on 127.0.0.1:<RESTAPIPort>; k8s: ClusterIP Service
  * (<service>.<namespace>) reachable from the agent. All backends use
  * RESTAPIPort directly — docker binds container port = host port (1:1). */
+import fs from "node:fs";
+
 async function baseUrl(rec: InstanceRecord): Promise<string> {
   if (rec.backend === "k8s" && rec.k8sServiceName && rec.k8sNamespace) {
     return `http://${rec.k8sServiceName}.${rec.k8sNamespace}:${rec.settings.RESTAPIPort}/v1/api`;
   }
-  return `http://127.0.0.1:${rec.settings.RESTAPIPort}/v1/api`;
+  const host = process.env.PALSERVER_HOST_OVERRIDE || (fs.existsSync("/.dockerenv") ? "host.docker.internal" : "127.0.0.1");
+  return `http://${host}:${rec.settings.RESTAPIPort}/v1/api`;
 }
 
 function requireRest(rec: InstanceRecord): void {

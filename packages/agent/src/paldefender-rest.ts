@@ -344,7 +344,7 @@ function pdHost(rec: InstanceRecord): string {
   if (rec.backend === "k8s" && rec.k8sServiceName && rec.k8sNamespace) {
     return `${rec.k8sServiceName}.${rec.k8sNamespace}`;
   }
-  return "127.0.0.1";
+  return process.env.PALSERVER_HOST_OVERRIDE || (fs.existsSync("/.dockerenv") ? "host.docker.internal" : "127.0.0.1");
 }
 
 async function pdFetch<T>(

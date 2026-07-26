@@ -30,6 +30,6 @@ COPY --chmod=755 entrypoint.sh /entrypoint.sh
 # /data/config -> agent-rendered PalWorldSettings.ini (read-only)
 VOLUME ["/data/saved"]
 
-EXPOSE 8211/udp 8212/tcp
+EXPOSE 8211/udp 8212/tcp 25575/tcp
 
 ENTRYPOINT ["/entrypoint.sh"]
