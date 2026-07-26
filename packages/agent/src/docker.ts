@@ -279,6 +279,16 @@ export async function startInstance(rec: InstanceRecord, instanceDir: string): P
   }
 
   let container = await findContainer(rec);
+  if (container) {
+    const info = await container.inspect().catch(() => null);
+    const bindings = info?.HostConfig?.PortBindings ?? {};
+    const restPort = rec.settings.RESTAPIEnabled ? rec.settings.RESTAPIPort : undefined;
+    if (restPort && !bindings[`${restPort}/tcp`]) {
+      await container.stop({ t: 10 }).catch(() => {});
+      await container.remove({ force: true }).catch(() => {});
+      container = null;
+    }
+  }
   if (!container) {
     await createContainer(rec, instanceDir);
     container = await findContainer(rec);

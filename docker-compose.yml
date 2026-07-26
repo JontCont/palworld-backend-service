@@ -9,8 +9,7 @@ services:
       dockerfile: packages/agent/Dockerfile
     image: palserver/agent:latest
     restart: unless-stopped
-    ports:
-      - "8250:8250"
+    network_mode: host
     environment:
       PALSERVER_DATA_DIR: /var/lib/palserver
     volumes:
