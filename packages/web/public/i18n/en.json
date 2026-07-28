@@ -1809,6 +1809,7 @@
   "複製後填入 Discord 的三個值,AGENT_TOKEN 貼上上方的權杖。": "Copy this, then fill in the three Discord values — paste the token above into AGENT_TOKEN.",
   "可用指令": "Available commands",
   "管理員": "Admin",
+  "管理員廣播：{msg}": "Admin broadcast: {msg}",
   "在這台機器上自動執行(推薦)": "Run automatically on this machine (recommended)",
   "貼上 Discord bot token,由這台 agent 直接把 bot 跑起來並自動維持 —— 免 Docker、免 Node、免手動註冊指令。token 只存在這台機器,不會回傳到瀏覽器。": "Paste a Discord bot token and this agent will run and keep the bot alive for you — no Docker, no Node, no manual command registration. The token stays on this machine and is never sent back to the browser.",
   "Discord Bot Token": "Discord Bot Token",

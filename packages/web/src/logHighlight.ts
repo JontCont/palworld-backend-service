@@ -23,7 +23,7 @@ export interface LogCategory {
 }
 
 export const LOG_CATEGORIES: LogCategory[] = [
-  { id: "chat", label: "聊天", color: "#5fb0ff", test: /\[Chat::/i },
+  { id: "chat", label: "聊天", color: "#5fb0ff", test: /\[Chat::|\[Admin::Broadcast\]/i },
   { id: "join", label: "玩家加入", color: "#57d38c", test: /connected to the server|has logged in\b/i },
   { id: "leave", label: "玩家離開", color: "#9aa4b2", test: /has logged out\b|disconnected from the server/i },
   { id: "death", label: "死亡", color: "#ff6b6b", test: /\bdied to\b|and died\.|was killed\b/i },
@@ -53,6 +53,8 @@ export function formatLine(raw: string): string | null {
   const line = raw.replace(/[\s﻿]+$/, ""); // 去尾端空白/CR,讓 $ 錨點正常匹配
   const tm = line.match(TIME_RE);
   const pre = tm ? `${tm[1]}  ` : "";
+  const adminBroadcast = line.match(/\[Admin::Broadcast\]:\s?(.*)$/);
+  if (adminBroadcast) return pre + t("管理員廣播：{msg}", { msg: adminBroadcast[1] });
   // 結構化欄位抽取共用 @palserver/shared 的 parseLogEvent(與 agent webhook 同一份 regex);
   // 這裡只負責依介面語言套版。
   const ev = parseLogEvent(line);

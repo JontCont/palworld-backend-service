@@ -857,11 +857,17 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const sendAnnounce = async () => {
-    if (!message.trim()) return;
+    const sentMessage = message.trim();
+    if (!sentMessage) return;
     setSending(true);
     setSendError(null);
     try {
-      await client.announce(instanceId, message.trim());
+      await client.announce(instanceId, sentMessage);
+      const now = new Date();
+      const timestamp = [now.getHours(), now.getMinutes(), now.getSeconds()]
+        .map((part) => String(part).padStart(2, "0"))
+        .join(":");
+      setLines((prev) => [...prev.slice(-999), `[${timestamp}][info] [Admin::Broadcast]: ${sentMessage}`]);
       setMessage("");
     } catch (err) {
       setSendError(err instanceof Error ? err.message : String(err));

@@ -1810,6 +1810,7 @@
   "複製後填入 Discord 的三個值,AGENT_TOKEN 貼上上方的權杖。": "复制后填入 Discord 的三个值,AGENT_TOKEN 粘贴上方的令牌。",
   "可用指令": "可用指令",
   "管理員": "管理员",
+  "管理員廣播：{msg}": "管理员广播：{msg}",
   "在這台機器上自動執行(推薦)": "在这台机器上自动运行(推荐)",
   "貼上 Discord bot token,由這台 agent 直接把 bot 跑起來並自動維持 —— 免 Docker、免 Node、免手動註冊指令。token 只存在這台機器,不會回傳到瀏覽器。": "粘贴 Discord bot 令牌,由这台 agent 直接把 bot 跑起来并自动维持 —— 免 Docker、免 Node、免手动注册指令。令牌只存在这台机器,不会回传到浏览器。",
   "Discord Bot Token": "Discord Bot 令牌",
