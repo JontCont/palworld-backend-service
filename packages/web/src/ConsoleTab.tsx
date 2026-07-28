@@ -29,6 +29,8 @@ interface LogEntry {
   failed: boolean;
 }
 
+const consoleLogs = new Map<string, LogEntry[]>();
+
 /** 座標參數:可自由輸入 x y (z),也可「在地圖描點」用世界地圖選一個點填入。 */
 function CoordField({
   arg,
@@ -217,7 +219,7 @@ export function ConsoleTab({
   const [selected, setSelected] = useState<CommandSpec | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [raw, setRaw] = useState("");
-  const [log, setLog] = useState<LogEntry[]>([]);
+  const [log, setLog] = useState<LogEntry[]>(() => consoleLogs.get(instanceId) ?? []);
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -269,6 +271,10 @@ export function ConsoleTab({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [log]);
+
+  useEffect(() => {
+    consoleLogs.set(instanceId, log);
+  }, [instanceId, log]);
 
   // 選了指令 / 改了參數,就把組好的指令帶進「唯一」的輸入列(仍可手動改)。
   useEffect(() => {

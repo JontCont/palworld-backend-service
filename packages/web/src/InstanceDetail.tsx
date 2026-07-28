@@ -970,6 +970,12 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
   const format = prefs.format; // 免費
   const translate = prefs.translate;
   const tl = translateTarget();
+  const visibleLines = lines.filter((line) => {
+    const cat = classifyLine(line);
+    if (logFilter === "issues") return cat === "warn" || cat === "error";
+    if (logFilter === "chat") return cat !== null && cat !== "warn" && cat !== "error";
+    return true;
+  });
 
   return (
     <div className="flex flex-col gap-3">
@@ -1040,11 +1046,9 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
           if (atBottom) setPendingLines(0);
         }}
       >
-        {lines.length ? (
-          lines.map((line, i) => {
+        {visibleLines.length ? (
+          visibleLines.map((line, i) => {
             const cat = classifyLine(line);
-            if (logFilter === "issues" && cat !== "warn" && cat !== "error") return null;
-            if (logFilter === "chat" && (cat === null || cat === "warn" || cat === "error")) return null;
             const color = highlight ? categoryColor(cat) : "#cfd6df";
             let text = line;
             if (format) {
@@ -1070,8 +1074,12 @@ function LogsTab({ client, instanceId }: { client: AgentClient; instanceId: stri
               </div>
             );
           })
+        ) : logFilter === "chat" ? (
+          <span className="text-[#cfd6df]">
+            {t("(目前沒有聊天事件；請在 PalDefender 的「日誌」設定開啟「記錄聊天訊息」)")}
+          </span>
         ) : (
-          <span className="text-[#cfd6df]">{t("(尚無日誌)")}</span>
+          <span className="text-[#cfd6df]">{t("(尚無符合條件的日誌)")}</span>
         )}
         <div ref={bottomRef} />
       </div>
