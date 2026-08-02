@@ -4,8 +4,8 @@
 # Game files are fetched at container start via DepotDownloader with -os windows,
 # keeping the image small and game updates image-free — same philosophy as vanilla.
 #
-# Wine + xvfb + VC++ runtime (vcrun2022) are baked in. WINEDLLOVERRIDES forces
-# d3d9=native,builtin so PalDefender's d3d9.dll proxy loads correctly.
+# Wine + xvfb are baked in; vcrun2022 initializes once in the persistent game volume.
+# WINEDLLOVERRIDES loads the local PalDefender and UE4SS proxy DLLs first.
 FROM debian:bookworm-slim
 
 RUN dpkg --add-architecture i386 && \
@@ -38,31 +38,22 @@ RUN curl -fsSLO "https://github.com/SteamRE/DepotDownloader/releases/download/De
 # Wine environment
 ENV WINEARCH=win64
 ENV WINEDEBUG=-all
-ENV WINEDLLOVERRIDES="mscoree,mshtml=;d3d9=n,b"
+ENV WINEDLLOVERRIDES="mscoree,mshtml=;d3d9=n,b;dwmapi=n,b"
 ENV DISPLAY=:99
-
-# Pre-init Wine prefix + VC++ 2022 runtime (required by Palworld Windows binary).
-# Done as root; the prefix is later copied into the palworld user's home.
-ENV WINEPREFIX=/root/.wine
-RUN Xvfb :99 -screen 0 1024x768x24 &>/tmp/xvfb.log && sleep 2 && \
-    wineboot --init 2>&1 | tail -3 && \
-    winetricks -q vcrun2022 2>&1 | tail -3 && \
-    wineserver --kill && \
-    rm -f /tmp/.X99-lock
 
 # Non-root user (UID 1000, same as vanilla for bind-mount compatibility).
 RUN id -u 1000 >/dev/null 2>&1 && usermod -l palworld -d /home/palworld -m "$(getent passwd 1000 | cut -d: -f1)" 2>/dev/null || \
     useradd -m -u 1000 palworld && \
-    mkdir -p /home/palworld && \
-    cp -r /root/.wine /home/palworld/.wine && \
-    chown -R 1000:1000 /home/palworld
+    mkdir -p /home/palworld /palworld /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix && \
+    chown -R 1000:1000 /home/palworld /palworld
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
 
 USER palworld
 ENV HOME=/home/palworld
-ENV WINEPREFIX=/home/palworld/.wine
+ENV WINEPREFIX=/palworld/.wine
 WORKDIR /palworld
 
 # /palworld  -> entire game install (PVC-backed, persists game + DLLs + config)

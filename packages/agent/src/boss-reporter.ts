@@ -172,14 +172,18 @@ export async function readBossState(rec: InstanceRecord, ctx: DriverContext): Pr
   }
 }
 
+export function supportsBossReporter(rec: InstanceRecord): boolean {
+  return serverPlatform(rec) === "windows";
+}
+
 export async function getBossReporterStatus(
   rec: InstanceRecord,
   ctx: DriverContext,
 ): Promise<BossRespawnStatus> {
-  if (serverPlatform(rec) !== "windows") {
+  if (!supportsBossReporter(rec)) {
     return {
       supported: false,
-      reason: "頭目回報模組僅支援 Windows 伺服器",
+      reason: "頭目回報模組需要 Windows server binary(原生 Windows 或 Wine)",
       ue4ss: false,
       modInstalled: false,
       version: null,
@@ -217,6 +221,11 @@ export async function getBossReporterStatus(
   };
 }
 
+export const bossReporterDependencies = {
+  installComponent,
+  fetchRemoteLua: fetchRemoteBossLua,
+};
+
 /**
  * 安裝(或更新)頭目回報模組:必要時先裝 UE4SS,再寫入 Lua 模組並於 mods.txt 啟用。
  * 呼叫端需確保伺服器已停止(UE4SS DLL 執行中會被鎖)。冪等:重跑即覆蓋成最新 Lua。
@@ -230,12 +239,12 @@ export async function installBossReporter(
 
   // 1) 相依 UE4SS:缺就裝標準版(已裝任一版則沿用,避免兩份互相打架)。
   if (!status.ue4ss) {
-    await installComponent(rec, ctx, "ue4ss");
+    await bossReporterDependencies.installComponent(rec, ctx, "ue4ss");
   }
 
   // 2) 從遠端 mod repo 抓最新 Lua 寫入(Scripts/main.lua + enabled.txt)。無內嵌 fallback:
   //    抓不到就中止安裝並提示(通常是 release 尚未發布或暫時連不上 GitHub)。
-  const remote = await fetchRemoteBossLua();
+  const remote = await bossReporterDependencies.fetchRemoteLua();
   if (!remote) {
     throw Object.assign(
       new Error(

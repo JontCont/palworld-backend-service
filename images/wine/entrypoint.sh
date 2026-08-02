@@ -12,6 +12,17 @@ XVFB_PID=$!
 trap 'kill $XVFB_PID 2>/dev/null || true' EXIT TERM INT
 sleep 1
 
+# ── Initialize persistent Wine prefix ───────────────────────────────
+WINE_READY_MARKER="$WINEPREFIX/.palserver-vcrun2022"
+if [ ! -f "$WINE_READY_MARKER" ]; then
+  echo "[palserver-wine] initializing Wine prefix and VC++ runtime..."
+  mkdir -p "$WINEPREFIX"
+  wineboot --init
+  winetricks -q vcrun2022
+  wineserver --kill
+  touch "$WINE_READY_MARKER"
+fi
+
 # ── Download / update Palworld (Windows depot) ──────────────────────
 echo "[palserver-wine] installing/updating Palworld (app $APP_ID, Windows)..."
 DepotDownloader -app "$APP_ID" -dir "$INSTALL_DIR" -os windows -osarch 64 -validate

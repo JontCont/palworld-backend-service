@@ -28,9 +28,9 @@ export class BossEventTracker {
 
   start(): void {
     if (this.timer) return;
-    this.timer = setInterval(() => void this.reconcile(), RECONCILE_MS);
+    this.timer = setInterval(() => void this.reconcileNow(), RECONCILE_MS);
     this.timer.unref();
-    void this.reconcile();
+    void this.reconcileNow();
   }
 
   stop(): void {
@@ -39,7 +39,7 @@ export class BossEventTracker {
     this.lastAlive.clear();
   }
 
-  private async reconcile(): Promise<void> {
+  async reconcileNow(): Promise<void> {
     for (const rec of this.store.list()) {
       if (!this.wants(rec.id)) {
         this.lastAlive.delete(rec.id);

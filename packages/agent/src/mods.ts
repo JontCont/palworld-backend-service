@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import extractZip from "extract-zip";
+import { pack } from "tar-stream";
 import type { ModComponent, ModsStatus } from "@palserver/shared";
 import type { DriverContext } from "./driver.js";
 import type { InstanceRecord } from "./store.js";
@@ -498,7 +499,7 @@ export async function installComponent(
   return { version };
 }
 
-/** Install a mod component into a docker container or k8s Pod via exec/archive. */
+/** Install a mod component into a docker container or k8s Pod via archive/exec. */
 async function installComponentInRuntime(
   rec: InstanceRecord,
   component: ModComponent,
@@ -508,38 +509,38 @@ async function installComponentInRuntime(
   const containerWin64 = CONTAINER_WIN64_DIR;
   // PVC = /palworld (entire install persisted); DLLs survive Pod restarts.
   const persistentWin64 = containerWin64;
-  // Extract on host to a temp dir, then transfer each file via exec.
+  // Extract on host to a temp dir, then transfer into the runtime.
   const tmpDir = path.join(os.tmpdir(), `palserver-mod-${component}-${Date.now()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
   fs.writeFileSync(path.join(tmpDir, `${component}.zip`), zipBuffer);
   const files = await extractZipTracked(path.join(tmpDir, `${component}.zip`), tmpDir);
   fs.rmSync(path.join(tmpDir, `${component}.zip`), { force: true });
 
-  // Ensure Win64 dir exists (DepotDownloader may still be running on first boot).
   if (rec.backend === "docker") {
-    await dockerOps.execInContainer(rec, ["mkdir", "-p", persistentWin64]);
-  } else {
-    // k8s: retry until Win64 exists (DepotDownloader creates it).
-    for (let attempt = 0; attempt < 60; attempt++) {
-      try {
-        const exists = await fileExistsInRuntime(rec, `${CONTAINER_WIN64_DIR}/PalServer-Win64-Shipping-Cmd.exe`);
-        if (exists) break;
-      } catch { /* ignore */ }
-      await new Promise((r) => setTimeout(r, 10000));
+    try {
+      await transferComponentToDocker(rec, tmpDir, files);
+      return { version };
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     }
-    await execInPod(rec, ["mkdir", "-p", persistentWin64]);
   }
 
-  // Transfer each extracted file/directory into the container/Pod.
+  // k8s: retry until Win64 exists (DepotDownloader creates it).
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try {
+      const exists = await fileExistsInRuntime(rec, `${CONTAINER_WIN64_DIR}/PalServer-Win64-Shipping-Cmd.exe`);
+      if (exists) break;
+    } catch { /* ignore */ }
+    await new Promise((r) => setTimeout(r, 10000));
+  }
+  await execInPod(rec, ["mkdir", "-p", persistentWin64]);
+
+  // Transfer each extracted file/directory into the Pod.
   for (const rel of files) {
     const localPath = path.join(tmpDir, rel);
     const remotePath = `${persistentWin64}/${rel}`;
     if (fs.statSync(localPath).isDirectory()) {
-      if (rec.backend === "docker") {
-        await dockerOps.execInContainer(rec, ["mkdir", "-p", remotePath]);
-      } else {
-        await execInPod(rec, ["mkdir", "-p", remotePath]);
-      }
+      await execInPod(rec, ["mkdir", "-p", remotePath]);
       await transferDirToRuntime(rec, localPath, remotePath);
     } else {
       await transferFileToRuntime(rec, localPath, remotePath);
@@ -551,17 +552,86 @@ async function installComponentInRuntime(
   return { version };
 }
 
+interface DockerComponentArchiveOperations {
+  collect(root: string): Promise<Buffer>;
+  put(rec: InstanceRecord, archive: Buffer, destination: string): Promise<void>;
+}
+
+const dockerComponentArchiveOperations: DockerComponentArchiveOperations = {
+  collect: collectTarRoot,
+  put: (rec, archive, destination) => dockerOps.putArchiveToContainer(rec, archive, destination),
+};
+
+export async function transferComponentToDocker(
+  rec: InstanceRecord,
+  extractedDir: string,
+  files: readonly string[],
+  operations: DockerComponentArchiveOperations = dockerComponentArchiveOperations,
+): Promise<void> {
+  const archiveRoot = path.join(extractedDir, ".palserver-archive");
+  const archiveWin64 = path.join(archiveRoot, "Pal", "Binaries", "Win64");
+  fs.mkdirSync(archiveWin64, { recursive: true });
+  for (const rel of files) {
+    fs.renameSync(path.join(extractedDir, rel), path.join(archiveWin64, rel));
+  }
+  const archive = await operations.collect(archiveRoot);
+  await operations.put(rec, archive, CONTAINER_INSTALL_DIR);
+}
+
+export async function collectTarRoot(root: string): Promise<Buffer> {
+  const archive = pack();
+  const chunks: Buffer[] = [];
+  archive.on("data", (chunk: Buffer) => chunks.push(chunk));
+  const completed = new Promise<Buffer>((resolve, reject) => {
+    archive.on("end", () => resolve(Buffer.concat(chunks)));
+    archive.on("error", reject);
+  });
+
+  const addEntry = async (relativePath: string): Promise<void> => {
+    const source = path.join(root, relativePath);
+    const stat = fs.lstatSync(source);
+    const name = relativePath.split(path.sep).join("/");
+    const common = {
+      name,
+      uid: 1000,
+      gid: 1000,
+      mode: stat.mode & 0o777,
+      mtime: stat.mtime,
+    };
+    if (stat.isDirectory()) {
+      await new Promise<void>((resolve, reject) => {
+        archive.entry({ ...common, name: `${name}/`, type: "directory" }, (error) =>
+          error ? reject(error) : resolve());
+      });
+      for (const child of fs.readdirSync(source).sort()) {
+        await addEntry(path.join(relativePath, child));
+      }
+      return;
+    }
+    if (stat.isSymbolicLink()) {
+      await new Promise<void>((resolve, reject) => {
+        archive.entry({ ...common, type: "symlink", linkname: fs.readlinkSync(source) }, (error) =>
+          error ? reject(error) : resolve());
+      });
+      return;
+    }
+    if (stat.isFile()) {
+      await new Promise<void>((resolve, reject) => {
+        archive.entry({ ...common, type: "file", size: stat.size }, fs.readFileSync(source), (error) =>
+          error ? reject(error) : resolve());
+      });
+    }
+  };
+
+  await addEntry("Pal");
+  archive.finalize();
+  return completed;
+}
+
 async function transferFileToRuntime(rec: InstanceRecord, localPath: string, remotePath: string): Promise<void> {
   const data = fs.readFileSync(localPath);
-  if (rec.backend === "docker") {
-    // docker: putArchive or base64 over exec. Base64 is simpler for small DLLs.
-    const b64 = data.toString("base64");
-    await dockerOps.execInContainer(rec, ["sh", "-c", `echo '${b64}' | base64 -d > '${remotePath}'`]);
-  } else {
-    // k8s: writeFileBytesInPod uses resolvePodPath (prepends /palworld).
-    const relPath = remotePath.replace(/^\/palworld\//, "");
-    await writeFileBytesInPod(rec, relPath, data);
-  }
+  const relPath = remotePath.replace(/^\/palworld\//, "");
+  await writeFileBytesInPod(rec, relPath, data);
 }
 
 async function transferDirToRuntime(rec: InstanceRecord, localDir: string, remoteDir: string): Promise<void> {
@@ -569,12 +639,8 @@ async function transferDirToRuntime(rec: InstanceRecord, localDir: string, remot
     const localPath = path.join(localDir, entry.name);
     const remotePath = `${remoteDir}/${entry.name}`;
     if (entry.isDirectory()) {
-      if (rec.backend === "docker") {
-        await dockerOps.execInContainer(rec, ["mkdir", "-p", remotePath]);
-      } else {
-        const relPath = remotePath.replace(/^\/palworld\//, "");
-        await makeDirInPod(rec, relPath);
-      }
+      const relPath = remotePath.replace(/^\/palworld\//, "");
+      await makeDirInPod(rec, relPath);
       await transferDirToRuntime(rec, localPath, remotePath);
     } else {
       await transferFileToRuntime(rec, localPath, remotePath);

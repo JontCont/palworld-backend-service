@@ -13,6 +13,8 @@ import { diffIniAgainstSnapshot, renderPalWorldSettingsIni } from "./settings-in
 
 export const docker = new Docker(); // default: /var/run/docker.sock
 
+const FILESYSTEM_HELPER_LABEL = "io.palserver.fs-helper";
+
 // ── image build/pull 狀態(仿 native.ts installing 模式)─────────────────
 const building = new Set<string>();
 export const isBuilding = (id: string): boolean => building.has(id);
@@ -74,6 +76,11 @@ function containerName(rec: InstanceRecord): string {
     .replace(/^[-_.]+/, "")
     .slice(0, 40);
   return `${CONTAINER_PREFIX}${slug ? `${slug}-` : ""}${rec.id}`;
+}
+
+export function containerSecurityOptions(rec: InstanceRecord): string[] | undefined {
+  // Wine 11 cannot create its wineserver socket under Docker 29.4.2's regressed default profile.
+  return rec.runtime === "wine" ? ["seccomp=unconfined"] : undefined;
 }
 
 async function findContainer(rec: InstanceRecord): Promise<Docker.Container | null> {
@@ -236,6 +243,7 @@ export async function createContainer(
     Cmd: launchArgs,
     HostConfig: {
       PortBindings: bindings,
+      SecurityOpt: containerSecurityOptions(rec),
       Binds: [
         `${path.join(instanceDir, "saved")}:/data/saved`,
         `${path.join(instanceDir, "config")}:/data/config:ro`,
@@ -433,6 +441,14 @@ export async function execInContainerChecked(
 ): Promise<string> {
   const container = await findContainer(rec);
   if (!container) throw Object.assign(new Error("找不到容器"), { statusCode: 409 });
+  return execInContainerObjectChecked(container, command, user);
+}
+
+async function execInContainerObjectChecked(
+  container: Docker.Container,
+  command: string[],
+  user?: string,
+): Promise<string> {
   const exec = await container.exec({
     Cmd: command,
     ...(user ? { User: user } : {}),
@@ -461,6 +477,99 @@ export async function execInContainerChecked(
     );
   }
   return Buffer.concat(outChunks).toString("utf8");
+}
+
+export interface InstanceFilesystemOperations {
+  find(rec: InstanceRecord): Promise<Docker.Container | null>;
+  execRunning(container: Docker.Container, command: string[]): Promise<string>;
+  execStopped(
+    rec: InstanceRecord,
+    container: Docker.Container,
+    image: string,
+    command: string[],
+  ): Promise<string>;
+}
+
+const instanceFilesystemOperations: InstanceFilesystemOperations = {
+  find: findContainer,
+  execRunning: (container, command) => execInContainerObjectChecked(container, command),
+  execStopped: execInStoppedInstanceFilesystem,
+};
+
+/** Execute against an instance's /palworld volumes whether its game container is running or stopped. */
+export async function execInInstanceFilesystem(
+  rec: InstanceRecord,
+  command: string[],
+  operations: InstanceFilesystemOperations = instanceFilesystemOperations,
+): Promise<string> {
+  const container = await operations.find(rec);
+  if (!container) throw Object.assign(new Error("找不到容器"), { statusCode: 409 });
+  const info = await container.inspect();
+  if (info.State.Running) return operations.execRunning(container, command);
+  return operations.execStopped(rec, container, info.Config.Image, command);
+}
+
+async function execInStoppedInstanceFilesystem(
+  rec: InstanceRecord,
+  source: Docker.Container,
+  image: string,
+  command: string[],
+): Promise<string> {
+  const stale = await docker.listContainers({
+    all: true,
+    filters: {
+      label: [`${INSTANCE_LABEL}=${rec.id}`, `${FILESYSTEM_HELPER_LABEL}=true`],
+    },
+  });
+  await Promise.all(
+    stale
+      .filter((entry) => entry.State !== "running")
+      .map((entry) => docker.getContainer(entry.Id).remove({ force: true }).catch(() => {})),
+  );
+
+  const helper = await docker.createContainer({
+    Image: image,
+    User: "0:0",
+    Entrypoint: command,
+    Cmd: [],
+    AttachStdout: true,
+    AttachStderr: true,
+    NetworkDisabled: true,
+    Labels: {
+      [INSTANCE_LABEL]: rec.id,
+      [FILESYSTEM_HELPER_LABEL]: "true",
+    },
+    HostConfig: {
+      VolumesFrom: [`${source.id}:rw`],
+    },
+  });
+
+  try {
+    const stream = await helper.attach({ stream: true, stdout: true, stderr: true });
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    const outChunks: Buffer[] = [];
+    const errChunks: Buffer[] = [];
+    stdout.on("data", (chunk) => outChunks.push(Buffer.from(chunk)));
+    stderr.on("data", (chunk) => errChunks.push(Buffer.from(chunk)));
+    docker.modem.demuxStream(stream, stdout, stderr);
+    const streamEnded = new Promise<void>((resolve, reject) => {
+      stream.on("end", resolve);
+      stream.on("error", reject);
+    });
+    await helper.start();
+    const result = await helper.wait();
+    await streamEnded;
+    const stderrText = Buffer.concat(errChunks).toString("utf8").trim();
+    if (result.StatusCode !== 0) {
+      throw new Error(
+        `容器內命令失敗(exit ${result.StatusCode}):${stderrText || command.join(" ")}`,
+      );
+    }
+    return Buffer.concat(outChunks).toString("utf8");
+  } finally {
+    await helper.remove({ force: true }).catch(() => {});
+  }
 }
 
 /** Upload a tar archive into the container at the given path (like docker cp). */
