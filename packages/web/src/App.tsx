@@ -592,6 +592,9 @@ function CreateDialog({
       setPlatform(i.platform);
       setArch(i.arch ?? null);
       setWineAvailable(i.wineAvailable ?? false);
+      if (importWorld && i.platform === "linux" && i.arch !== "arm64") {
+        setUseWine(true);
+      }
       if (i.availableBackends && i.availableBackends.length > 0) {
         setAvailableBackends(i.availableBackends);
         if (!i.availableBackends.includes(backend)) {
@@ -599,7 +602,7 @@ function CreateDialog({
         }
       }
     }).catch(() => {});
-  }, [client]);
+  }, [client, importWorld]);
 
   const submit = async () => {
     setBusy(true);
@@ -799,7 +802,7 @@ function CreateDialog({
                       checked={useWine}
                       onChange={(e) => setUseWine(e.target.checked)}
                     />
-                    {t("Wine 模式(Windows binary,支援 PalDefender)")}
+                    {t("Wine 模式(Windows binary,支援 PalDefender 與頭目回報)")}
                   </label>
                 )}
                 {backend === "k8s" && !isArm64 && (
@@ -809,7 +812,7 @@ function CreateDialog({
                       checked={useWine}
                       onChange={(e) => setUseWine(e.target.checked)}
                     />
-                    {t("Wine 模式(Windows binary,支援 PalDefender)")}
+                    {t("Wine 模式(Windows binary,支援 PalDefender 與頭目回報)")}
                   </label>
                 )}
                 {backend === "k8s" && (

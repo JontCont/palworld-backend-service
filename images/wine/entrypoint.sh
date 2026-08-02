@@ -3,6 +3,7 @@ set -euo pipefail
 
 APP_ID=2394010          # Palworld Dedicated Server
 INSTALL_DIR="/palworld"
+SAVED_DIR="/data/saved"
 CONFIG_DST="$INSTALL_DIR/Pal/Saved/Config/WindowsServer/PalWorldSettings.ini"
 
 # ── Xvfb (virtual framebuffer) ──────────────────────────────────────
@@ -26,6 +27,15 @@ fi
 # ── Download / update Palworld (Windows depot) ──────────────────────
 echo "[palserver-wine] installing/updating Palworld (app $APP_ID, Windows)..."
 DepotDownloader -app "$APP_ID" -dir "$INSTALL_DIR" -os windows -osarch 64 -validate
+
+# Persist Pal/Saved (worlds, players, generated config) on the mounted volume.
+mkdir -p "$SAVED_DIR"
+if [ -d "$INSTALL_DIR/Pal/Saved" ] && [ ! -L "$INSTALL_DIR/Pal/Saved" ]; then
+  cp -rn "$INSTALL_DIR/Pal/Saved/." "$SAVED_DIR/" || true
+  rm -rf "$INSTALL_DIR/Pal/Saved"
+fi
+mkdir -p "$INSTALL_DIR/Pal"
+ln -sfn "$SAVED_DIR" "$INSTALL_DIR/Pal/Saved"
 
 # ── Apply agent-rendered settings ───────────────────────────────────
 # docker: agent bind-mounts /data/config/PalWorldSettings.ini

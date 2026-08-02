@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import extractZip from "extract-zip";
 import { pack } from "tar-stream";
-import type { ModComponent, ModsStatus } from "@palserver/shared";
+import type { InstanceStatus, ModComponent, ModsStatus } from "@palserver/shared";
 import type { DriverContext } from "./driver.js";
 import type { InstanceRecord } from "./store.js";
 import { serverPlatform } from "./platform.js";
@@ -66,11 +66,28 @@ const CONTAINER_WIN64_DIR = `${CONTAINER_INSTALL_DIR}/Pal/Binaries/Win64`;
 /** k8s writeFileInPod 需要 resolvePodPath 相對路徑（會加 /palworld 前綴）。 */
 const POD_WIN64_REL = "Pal/Binaries/Win64";
 
+export function modInstallPrecondition(
+  rec: InstanceRecord,
+  status: InstanceStatus,
+  runtimeId: string | null,
+): string | null {
+  if (rec.backend === "native" && status === "running") {
+    return "請先停止伺服器再安裝或更新模組(執行中時檔案被鎖定無法覆寫)";
+  }
+  if (rec.backend === "k8s" && status !== "running") {
+    return "伺服器未運行 — k8s 安裝需要容器在運行中才能傳輸檔案";
+  }
+  if (rec.backend === "docker" && !runtimeId) {
+    return "伺服器尚未建立容器 — 請先啟動一次完成遊戲環境，再停止後安裝模組";
+  }
+  return null;
+}
+
 /** docker/k8s 下用 exec 偵測檔案是否存在。 */
 async function fileExistsInRuntime(rec: InstanceRecord, filePath: string): Promise<boolean> {
   if (rec.backend === "docker") {
     try {
-      await dockerOps.execInContainer(rec, ["test", "-f", filePath]);
+      await dockerOps.execInInstanceFilesystem(rec, ["test", "-f", filePath]);
       return true;
     } catch {
       return false;
@@ -186,7 +203,11 @@ export function setModEnabled(rec: InstanceRecord, ctx: DriverContext, component
   }
 }
 
-export async function getModsStatus(rec: InstanceRecord, ctx: DriverContext): Promise<ModsStatus> {
+export async function getModsStatus(
+  rec: InstanceRecord,
+  ctx: DriverContext,
+  runtimeFileExists = fileExistsInRuntime,
+): Promise<ModsStatus> {
   const unsupported = (reason: string, serverInstalled = true): ModsStatus => ({
     supported: false,
     reason,
@@ -204,10 +225,11 @@ export async function getModsStatus(rec: InstanceRecord, ctx: DriverContext): Pr
 
   // docker/k8s: 容器/Pod 內 exec 偵測（host fs 看不到容器內的 Win64 目錄）。
   if (rec.backend === "docker" || rec.backend === "k8s") {
-    const paldefenderInstalled = await fileExistsInRuntime(rec, `${CONTAINER_WIN64_DIR}/PalDefender.dll`);
+    const paldefenderInstalled = await runtimeFileExists(rec, `${CONTAINER_WIN64_DIR}/PalDefender.dll`);
     const ue4ssInstalled =
-      await fileExistsInRuntime(rec, `${CONTAINER_WIN64_DIR}/ue4ss/UE4SS.dll`) ||
-      await fileExistsInRuntime(rec, `${CONTAINER_WIN64_DIR}/UE4SS.dll`);
+      await runtimeFileExists(rec, `${CONTAINER_WIN64_DIR}/dwmapi.dll`) ||
+      await runtimeFileExists(rec, `${CONTAINER_WIN64_DIR}/ue4ss/UE4SS.dll`) ||
+      await runtimeFileExists(rec, `${CONTAINER_WIN64_DIR}/UE4SS.dll`);
     return {
       supported: true,
       ue4ss: { installed: ue4ssInstalled, version: null },

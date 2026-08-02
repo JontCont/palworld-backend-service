@@ -59,7 +59,7 @@ import { k8sDriver } from "./k8s.js";
 import { serverLauncher, classifyServerDir, detectManualIniEdits, installProgressOf, isInstalling, lastInstallError, moveServerFiles, nativeDriver, serverRoot, updateServer, writeWorldIni } from "./native.js";
 import { cachedVersionSummary, getVersionStatus } from "./version.js";
 import { getConnectionInfo } from "./connectivity.js";
-import { getModsStatus, installComponent, latestModVersions, setModEnabled, installedEnhancements, removeComponent, setLuaModEnabled } from "./mods.js";
+import { getModsStatus, installComponent, latestModVersions, modInstallPrecondition, setModEnabled, installedEnhancements, removeComponent, setLuaModEnabled } from "./mods.js";
 import { checkPorts, udpPortFree } from "./port-check.js";
 import { runtimePortFree } from "./runtime-port-check.js";
 import * as pakMods from "./pak-mods.js";
@@ -1284,15 +1284,9 @@ export function registerRoutes(
         url: z.string().url().startsWith("https://").optional(),
       })
       .parse(req.body ?? {});
-    // native: DLLs are locked by the running Windows process — must stop first.
-    // docker/k8s: exec into container needs the Pod running; Linux doesn't lock
-    // the file (inode survives unlink), so install while running is OK.
-    if (rec.backend === "native" && await isRunning(rec)) {
-      return reply.code(409).send({ error: "請先停止伺服器再安裝或更新模組(執行中時檔案被鎖定無法覆寫)" });
-    }
-    if ((rec.backend === "docker" || rec.backend === "k8s") && !await isRunning(rec)) {
-      return reply.code(409).send({ error: "伺服器未運行 — docker/k8s 安裝需要容器在運行中才能傳輸檔案" });
-    }
+    const runtime = await driverOf(rec).status(rec, ctxOf(rec));
+    const precondition = modInstallPrecondition(rec, runtime.status, runtime.runtimeId);
+    if (precondition) return reply.code(409).send({ error: precondition });
     const { version } = await installComponent(rec, ctxOf(rec), component, channel, url);
     // PalDefender's admin/moderation surface depends on RCON. Older records
     // may still carry the historical false default, so installing PD repairs

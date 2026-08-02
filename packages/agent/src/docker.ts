@@ -83,12 +83,15 @@ export function containerSecurityOptions(rec: InstanceRecord): string[] | undefi
   return rec.runtime === "wine" ? ["seccomp=unconfined"] : undefined;
 }
 
-async function findContainer(rec: InstanceRecord): Promise<Docker.Container | null> {
+export async function findContainer(rec: InstanceRecord): Promise<Docker.Container | null> {
   const list = await docker.listContainers({
     all: true,
     filters: { label: [`${INSTANCE_LABEL}=${rec.id}`] },
   });
-  return list.length > 0 ? docker.getContainer(list[0].Id) : null;
+  const gameContainer = list.find(
+    (entry) => entry.Labels?.[FILESYSTEM_HELPER_LABEL] !== "true",
+  );
+  return gameContainer ? docker.getContainer(gameContainer.Id) : null;
 }
 
 export async function getStatus(
@@ -117,8 +120,8 @@ export function writeConfig(instanceDir: string, settings: WorldSettings): void 
   fs.mkdirSync(configDir, { recursive: true });
   fs.mkdirSync(savedDir, { recursive: true });
   // Runtime image runs as uid/gid 1000(palworld). Ensure bind-mounted saved dir
-  // stays writable even if the agent created it as root.
-  if (process.platform !== "win32") fs.chmodSync(savedDir, 0o777);
+  // stays writable even if imported files and subdirectories are root-owned.
+  if (process.platform !== "win32") ensureDockerSavedTreeWritable(savedDir);
   fs.writeFileSync(
     path.join(configDir, "PalWorldSettings.ini"),
     renderPalWorldSettingsIni(settings),
@@ -128,6 +131,19 @@ export function writeConfig(instanceDir: string, settings: WorldSettings): void 
     fs.writeFileSync(path.join(instanceDir, "world-applied.json"), JSON.stringify(settings));
   } catch {
     /* 存不進去頂多偵測不到手動編輯,不致命 */
+  }
+}
+
+export function ensureDockerSavedTreeWritable(root: string): void {
+  fs.chmodSync(root, 0o777);
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const target = path.join(root, entry.name);
+    if (entry.isSymbolicLink()) continue;
+    if (entry.isDirectory()) {
+      ensureDockerSavedTreeWritable(target);
+    } else {
+      fs.chmodSync(target, 0o666);
+    }
   }
 }
 
@@ -521,9 +537,10 @@ async function execInStoppedInstanceFilesystem(
       label: [`${INSTANCE_LABEL}=${rec.id}`, `${FILESYSTEM_HELPER_LABEL}=true`],
     },
   });
+  const nowSeconds = Math.floor(Date.now() / 1000);
   await Promise.all(
     stale
-      .filter((entry) => entry.State !== "running")
+      .filter((entry) => isStaleFilesystemHelper(entry, nowSeconds))
       .map((entry) => docker.getContainer(entry.Id).remove({ force: true }).catch(() => {})),
   );
 
@@ -570,6 +587,14 @@ async function execInStoppedInstanceFilesystem(
   } finally {
     await helper.remove({ force: true }).catch(() => {});
   }
+}
+
+export function isStaleFilesystemHelper(
+  entry: Pick<Docker.ContainerInfo, "State" | "Created">,
+  nowSeconds = Math.floor(Date.now() / 1000),
+): boolean {
+  return entry.State === "exited" || entry.State === "dead" ||
+    (entry.State === "created" && nowSeconds - entry.Created > 300);
 }
 
 /** Upload a tar archive into the container at the given path (like docker cp). */

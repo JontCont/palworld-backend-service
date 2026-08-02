@@ -4,10 +4,31 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { extract } from "tar-stream";
-import { collectTarRoot, transferComponentToDocker } from "./mods.js";
+import { collectTarRoot, getModsStatus, modInstallPrecondition, transferComponentToDocker } from "./mods.js";
 import type { InstanceRecord } from "./store.js";
 
 const rec = { id: "wine-1", backend: "docker", runtime: "wine" } as InstanceRecord;
+
+test("mod install preconditions distinguish new, stopped, and running-only runtimes", () => {
+  assert.match(modInstallPrecondition(rec, "created", null) ?? "", /先啟動一次/);
+  assert.equal(modInstallPrecondition(rec, "exited", "game-container"), null);
+  assert.match(
+    modInstallPrecondition({ ...rec, backend: "k8s" }, "exited", "pod") ?? "",
+    /需要容器在運行中/,
+  );
+});
+
+test("Docker mod status recognizes current UE4SS proxy and PalDefender layouts", async () => {
+  const checked: string[] = [];
+  const status = await getModsStatus(rec, {} as never, async (_record, filePath) => {
+    checked.push(filePath);
+    return filePath.endsWith("/dwmapi.dll") || filePath.endsWith("/PalDefender.dll");
+  });
+
+  assert.equal(status.ue4ss.installed, true);
+  assert.equal(status.paldefender.installed, true);
+  assert.ok(checked.some((filePath) => filePath.endsWith("/dwmapi.dll")));
+});
 
 test("Docker component archives preserve the game container uid and gid", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "palserver-tar-owner-test-"));

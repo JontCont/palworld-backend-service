@@ -1,16 +1,29 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { PassThrough } from "node:stream";
 import test, { type TestContext } from "node:test";
 import type Docker from "dockerode";
 import {
   containerSecurityOptions,
   docker,
+  ensureDockerSavedTreeWritable,
   execInInstanceFilesystem,
+  findContainer,
+  isStaleFilesystemHelper,
   type InstanceFilesystemOperations,
 } from "./docker.js";
 import type { InstanceRecord } from "./store.js";
 
 const rec = { id: "wine-1", backend: "docker", runtime: "wine" } as InstanceRecord;
+
+test("freshly created filesystem helpers are not removed by parallel requests", () => {
+  assert.equal(isStaleFilesystemHelper({ State: "created", Created: 900 }, 1_000), false);
+  assert.equal(isStaleFilesystemHelper({ State: "created", Created: 600 }, 1_000), true);
+  assert.equal(isStaleFilesystemHelper({ State: "exited", Created: 999 }, 1_000), true);
+  assert.equal(isStaleFilesystemHelper({ State: "running", Created: 1 }, 1_000), false);
+});
 
 test("only Wine containers bypass the regressed Docker seccomp profile", () => {
   assert.deepEqual(containerSecurityOptions(rec), ["seccomp=unconfined"]);
@@ -133,4 +146,30 @@ test("stopped filesystem helper removes itself after non-zero exit", async (cont
   const result = await exerciseDefaultStoppedHelper(context, 9);
   assert.match(String(result.error), /exit 9.*denied/);
   assert.equal(result.removeCount, 1);
+});
+
+test("instance lookup ignores filesystem helpers", async (context) => {
+  context.mock.method(docker, "listContainers", async () => [
+    { Id: "helper", Labels: { "io.palserver.fs-helper": "true" } },
+    { Id: "game", Labels: { "app.palserver.instance": rec.id } },
+  ] as unknown as Docker.ContainerInfo[]);
+  context.mock.method(docker, "getContainer", (id: string) => ({ id }) as Docker.Container);
+
+  assert.equal((await findContainer(rec))?.id, "game");
+});
+
+test("Docker saved trees are writable after importing root-owned directories", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "palserver-saved-mode-"));
+  const configDir = path.join(root, "Config", "LinuxServer");
+  const configFile = path.join(configDir, "PalWorldSettings.ini");
+  fs.mkdirSync(configDir, { recursive: true, mode: 0o755 });
+  fs.writeFileSync(configFile, "settings", { mode: 0o644 });
+
+  try {
+    ensureDockerSavedTreeWritable(root);
+    assert.equal(fs.statSync(configDir).mode & 0o777, process.platform === "win32" ? 0o666 : 0o777);
+    assert.equal(fs.statSync(configFile).mode & 0o777, 0o666);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
