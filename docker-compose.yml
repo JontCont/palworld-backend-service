@@ -1,7 +1,7 @@
 # Deploys the palserver agent itself as a container.
-# NOTE: when the agent runs in a container, PALSERVER_DATA_DIR must be a
-# path that exists on the HOST at the same location, because instance
-# config/save dirs are bind-mounted into sibling containers via docker.sock.
+# NOTE: PALSERVER_DATA_DIR uses Docker Desktop's daemon-visible Windows path.
+# It must match the mount destination because instance config/save dirs are
+# bind-mounted into sibling containers via docker.sock.
 services:
   agent:
     build:
@@ -14,10 +14,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      PALSERVER_DATA_DIR: /var/lib/palserver
+      PALSERVER_DATA_DIR: /run/desktop/mnt/host/c/docker/palserver-agent
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /var/lib/palserver:/var/lib/palserver
+      - C:/docker/palserver-agent:/run/desktop/mnt/host/c/docker/palserver-agent
 
   playit:
     image: ghcr.io/playit-cloud/playit-agent:0.17

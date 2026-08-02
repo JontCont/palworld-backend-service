@@ -542,7 +542,7 @@ export async function restoreBackup(
   // `running` the way native does (native wants the server stopped so its
   // files aren't mid-write). For k8s we unpack into the running Pod and let
   // the caller restart it to pick up the restored state.
-  if (rec.backend === "native" && running) throw fail("請先停止伺服器再還原存檔", 409);
+  if (rec.backend !== "k8s" && running) throw fail("請先停止伺服器再還原存檔", 409);
   if (rec.backend === "k8s" && !running) throw fail("k8s 還原存檔需伺服器運行中(以存取 Pod)", 409);
 
   const archive = path.join(backupsDir(ctx), path.basename(backupName));

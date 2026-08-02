@@ -10,7 +10,7 @@ import {
   FiRefreshCw,
 } from "react-icons/fi";
 import type { DirEntry } from "@palserver/shared";
-import type { AgentClient } from "./api";
+import { AgentApiError, type AgentClient } from "./api";
 import { t, useI18n } from "./i18n";
 import { btn, btnGhost, card, errorCls, inputCls } from "./ui";
 
@@ -44,7 +44,9 @@ export function FileManager({
       setError(null);
     } catch (err) {
       setEntries([]);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(err instanceof AgentApiError && err.status === 404
+        ? null
+        : err instanceof Error ? err.message : String(err));
     }
   }, [client, instanceId, dir]);
 

@@ -69,6 +69,13 @@ export interface Connection {
   token: string;
 }
 
+export class AgentApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "AgentApiError";
+  }
+}
+
 /** 匿名使用統計(遙測)狀態 — 對應 agent 的 GET/PUT /api/telemetry。 */
 export interface TelemetryStatus {
   enabled: boolean;
@@ -233,7 +240,7 @@ export class AgentClient {
     }
     if (res.status === 204) return undefined as T;
     const body = await res.json().catch(() => ({ error: res.statusText }));
-    if (!res.ok) throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+    if (!res.ok) throw new AgentApiError((body as { error?: string }).error ?? `HTTP ${res.status}`, res.status);
     return body as T;
   }
 
