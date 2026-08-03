@@ -5,7 +5,7 @@ import { savToMap, type SaveGuild } from "@palserver/shared";
 import type { AgentClient } from "./api";
 import { useGameData, displayName, findCharacter, itemIconUrl, type GameData } from "./gameData";
 import { localizeBaseName, t, useI18n } from "./i18n";
-import { DetailsToggle, Overlay, SponsorHint, btn, btnDanger, btnGhost, card, errorCls, fmtLastOnline, inputCls, useDetailsPref } from "./ui";
+import { DetailsToggle, Overlay, btn, btnDanger, btnGhost, card, errorCls, fmtLastOnline, inputCls, useDetailsPref } from "./ui";
 
 /** 刪除據點的強確認彈窗:強調不可逆 + 必須輸入公會名稱才能刪(GitHub 刪 repo 那種強確認)。 */
 function DeleteBaseConfirm({

@@ -14,7 +14,7 @@ import type { AgentClient } from "./api";
 import { useGameData, displayName, findCharacter, itemIconUrl, type GameData } from "./gameData";
 import { maskSteamId } from "./SteamId";
 import { localizeBaseName, t, useI18n } from "./i18n";
-import { DetailsToggle, Overlay, SponsorHint, card, btn, btnGhost, errorCls, fmtLastOnline, inputCls, useDetailsPref } from "./ui";
+import { DetailsToggle, Overlay, card, btn, btnGhost, errorCls, fmtLastOnline, inputCls, useDetailsPref } from "./ui";
 
 /**
  * 玩家詳情 — 兩個資料來源「合併成同一個視圖」,不分區:
